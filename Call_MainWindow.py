@@ -7,6 +7,8 @@ from PyQt5.QtWidgets import *
 import pymysql
 
 
+# git test
+
 class MyMainForm(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MyMainForm, self).__init__(parent)
