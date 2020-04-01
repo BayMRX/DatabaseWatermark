@@ -80,12 +80,16 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                     maxAttrNum += 1
         # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
         pk_name = res[pk_index][0]  #主键属性名
+        self.progressBar.setValue(0)  # 进度条清空
         sql = 'SELECT * FROM ' + self.cur_tb
         try:
             self.cur.execute(sql)
+            rowcount = self.cur.rowcount
+            cur_count = 0
             pk_li = self.cur.fetchall()  # 查询表中所有数据
             for value in pk_li:  # 遍历每一条数据
                 # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                # print(cur_count,value)
                 h = hmac.new(self.key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
                 if not self.hmac_mod(h, self.scale_lineEdit.text()):  #判断哈希值对水印比例系数取模后是否为0
                     attr_index = self.hmac_mod(h, self.attrNum_lineEdit.text())
@@ -97,9 +101,12 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                     # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
                     # print(sql)
                     self.update_db(sql)
+                    cur_count += 1
+                    self.progressBar.setValue(cur_count / rowcount * 100)
+
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
-        self.login.db.close()
+
         QMessageBox.information(self, '添加成功', '水印添加成功！', QMessageBox.Ok, QMessageBox.Ok)
 
     def hmac_mod(self, hmac_str, mod_num):  #对HMAC值进行取模运算

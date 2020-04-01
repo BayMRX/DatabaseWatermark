@@ -13,7 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(734, 407)
+        MainWindow.resize(734, 440)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.groupBox = QtWidgets.QGroupBox(self.centralwidget)
@@ -79,7 +79,7 @@ class Ui_MainWindow(object):
         self.add_pushButton.setGeometry(QtCore.QRect(260, 30, 75, 23))
         self.add_pushButton.setObjectName("add_pushButton")
         self.groupBox_4 = QtWidgets.QGroupBox(self.centralwidget)
-        self.groupBox_4.setGeometry(QtCore.QRect(30, 280, 671, 80))
+        self.groupBox_4.setGeometry(QtCore.QRect(30, 280, 671, 71))
         self.groupBox_4.setObjectName("groupBox_4")
         self.label_4 = QtWidgets.QLabel(self.groupBox_4)
         self.label_4.setGeometry(QtCore.QRect(65, 30, 31, 16))
@@ -94,6 +94,10 @@ class Ui_MainWindow(object):
         self.detect_pushButton = QtWidgets.QPushButton(self.groupBox_4)
         self.detect_pushButton.setGeometry(QtCore.QRect(260, 27, 75, 23))
         self.detect_pushButton.setObjectName("detect_pushButton")
+        self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
+        self.progressBar.setGeometry(QtCore.QRect(30, 370, 671, 23))
+        self.progressBar.setProperty("value", 0)
+        self.progressBar.setObjectName("progressBar")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
