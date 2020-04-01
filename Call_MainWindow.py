@@ -8,6 +8,7 @@ import pymysql
 import hmac
 import hashlib
 import struct
+import time
 
 
 class MyMainForm(QMainWindow, Ui_MainWindow):
@@ -20,7 +21,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.db_comboBox.activated.connect(self.db_change)
         self.tb_comboBox.currentIndexChanged.connect(self.tb_change)
         self.key_pushButton.clicked.connect(self.openKeyFile)
-        self.add_pushButton.clicked.connect(self.readData)
+        self.add_pushButton.clicked.connect(self.watermarkInsert)
 
     def openForm(self):  # 点登陆按钮 打开登录框
         self.login = LoginForm()  #登陆界面类实例化
@@ -64,7 +65,8 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.key = key_file.readline()
         key_file.close()
 
-    def readData(self):  # 点击添加按钮后执行此函数
+    def watermarkInsert(self):  # 点击添加按钮后执行此函数
+        time_start = time.time()
         sql = 'desc ' + self.cur_tb  #查询当前表下的所有属性
         self.cur.execute(sql)
         res = self.cur.fetchall()  #获取查询结果
@@ -106,8 +108,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
-
-        QMessageBox.information(self, '添加成功', '水印添加成功！', QMessageBox.Ok, QMessageBox.Ok)
+        time_end = time.time()
+        QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
+                                QMessageBox.Ok)
 
     def hmac_mod(self, hmac_str, mod_num):  #对HMAC值进行取模运算
         res = 0
