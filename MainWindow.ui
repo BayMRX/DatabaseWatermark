@@ -192,20 +192,20 @@
                       <rect>
                           <x>20</x>
                           <y>30</y>
-                          <width>91</width>
+                          <width>101</width>
                           <height>16</height>
                       </rect>
                   </property>
                   <property name="text">
-                      <string>水印比例系数：</string>
+                      <string>水印比例系数：1/</string>
                   </property>
               </widget>
               <widget class="QLineEdit" name="scale_lineEdit">
                   <property name="geometry">
                       <rect>
-                          <x>110</x>
+                          <x>121</x>
                           <y>28</y>
-                          <width>61</width>
+                          <width>51</width>
                           <height>20</height>
                       </rect>
                   </property>
@@ -251,7 +251,7 @@
                       <rect>
                           <x>520</x>
                           <y>27</y>
-                          <width>113</width>
+                          <width>61</width>
                           <height>20</height>
                       </rect>
                   </property>
