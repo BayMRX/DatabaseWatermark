@@ -27,6 +27,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.tb_comboBox.currentIndexChanged.connect(self.tb_change)
         self.key_pushButton.clicked.connect(self.openKeyFile)
         self.add_pushButton.clicked.connect(self.watermarkInsert)
+        self.detect_pushButton.clicked.connect(self.watermarkDetect)
 
     def openForm(self):  # 点登陆按钮 打开登录框
         global cursor
@@ -73,35 +74,45 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         key_file.close()
 
     def watermarkInsert(self):  # 点击添加按钮后执行此函数
-        scale = self.scale_lineEdit.text()
-        attrNum = self.attrNum_lineEdit.text()
-        lsb = self.lsb_lineEdit.text()
         # 水印添加时禁用所有组件
         self.widget.setEnabled(False)
         # 使用多线程处理比较耗费时间的水印添加过程
-        self.work = InsertThread(scale, attrNum, lsb)
+        self.insert = InsertThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(), self.lsb_lineEdit.text())
         self.progressBar.setValue(0)
-        self.time_start = time.time()
-        self.work.pb_signal.connect(self.update_pb)
-        self.work.err_signal.connect(self.err_info)
-        self.work.start()
+        # self.time_start = time.time()
+        self.insert.pb_signal.connect(self.update_pb)
+        self.insert.err_signal.connect(self.err_info)
+        self.insert.dialogInfo_signal.connect(self.finishDialog)
+        self.insert.start()
+
+    def watermarkDetect(self):
+        # 水印检测时禁用所有组件
+        self.widget.setEnabled(False)
+        # 使用多线程处理比较耗费时间的水印添加过程
+        self.detect = DetectThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(), self.lsb_lineEdit.text(),
+                                   self.threshold_lineEdit.text())
+        self.progressBar.setValue(0)
+        self.detect.pb_signal.connect(self.update_pb)
+        self.detect.err_signal.connect(self.err_info)
+        self.detect.dialogInfo_signal.connect(self.finishDialog)
+        self.detect.start()
 
     def update_pb(self, val):
         self.progressBar.setValue(int(val))
-        if val == '100':
-            time_end = time.time()
-            QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - self.time_start), QMessageBox.Ok,
-                                    QMessageBox.Ok)
-            self.widget.setEnabled(True)  # 水印添加完成后恢复所有组件状态
 
     def err_info(self, info):
         QMessageBox.critical(self, 'Error!', info)
 
+    def finishDialog(self, info):
+        QMessageBox.information(self, '操作完成', info, QMessageBox.Ok, QMessageBox.Ok)
+        self.widget.setEnabled(True)  # 水印添加完成后恢复所有组件状态
 
-# 启用多线程类
+
+# 启用水印插入多线程类
 class InsertThread(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
+    dialogInfo_signal = pyqtSignal(str)
 
     def __init__(self, scale, attrNum, lsb):
         super(InsertThread, self).__init__()
@@ -111,7 +122,7 @@ class InsertThread(QThread):
 
     def run(self):
         global cur_tb
-        # time_start = time.time()
+        time_start = time.time()
         sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
         cursor.execute(sql)
         res = cursor.fetchall()  # 获取查询结果
@@ -132,7 +143,7 @@ class InsertThread(QThread):
         try:
             cursor.execute(sql)
             rowcount = cursor.rowcount
-            cur_count = 0
+            pb_val = cur_count = 0  # 与进度条相关
             pk_li = cursor.fetchall()  # 查询表中所有数据
             for value in pk_li:  # 遍历每一条数据
                 # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
@@ -149,9 +160,14 @@ class InsertThread(QThread):
                     # print(sql)
                     self.update_db(sql)
                 cur_count += 1
-                self.pb_signal.emit(str(int(cur_count / rowcount * 100)))
+                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                pb_NewVal = int(cur_count / rowcount * 100.0)
+                if pb_NewVal == pb_val + 1:
+                    self.pb_signal.emit(str(pb_NewVal))
+                    pb_val = pb_NewVal
                 # self.progressBar.setValue(cur_count / rowcount * 100)
-            # time_end = time.time()
+            time_end = time.time()
+            self.dialogInfo_signal.emit('水印添加成功！\n总用时：%.4fs' % (time_end - time_start))
             # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
             #                          QMessageBox.Ok)
         except Exception as e:
@@ -198,8 +214,108 @@ class InsertThread(QThread):
             cursor.execute(sql)
             db.commit()
         except Exception as e:
-            self.err_signal.emit(str(e))
+            self.err_signal.emit('DateBase Error:' + str(e))
             db.rollback()
+
+
+# 启用水印检测多线程类
+class DetectThread(QThread):
+    pb_signal = pyqtSignal(str)
+    err_signal = pyqtSignal(str)
+    dialogInfo_signal = pyqtSignal(str)
+
+    def __init__(self, scale, attrNum, lsb, threshold):
+        super(DetectThread, self).__init__()
+        self.scale = scale
+        self.attrNum = attrNum
+        self.lsb = lsb
+        self.threshold = threshold
+
+    def run(self):
+        global cur_tb
+        time_start = time.time()
+        sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        cursor.execute(sql)
+        res = cursor.fetchall()  # 获取查询结果
+        li = ['float', 'double', 'decimal']
+        v_array = []  # 可添加水印属性列表
+        maxAttrNum = 0  # 可用来添加水印的最大属性数量
+        for i, j in enumerate(res):
+            if j[3] == 'PRI':
+                pk_index = i  # 记录属性为主键的索引
+            else:
+                if j[1] in li:
+                    v_array.append(i)
+                    maxAttrNum += 1
+        # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        # self.progressBar.setValue(0)  # 进度条清空
+        sql = 'SELECT * FROM ' + cur_tb
+        try:
+            cursor.execute(sql)
+            rowcount = cursor.rowcount
+            totalCount = matchCount = 0  # 命中总数和命中中正确个数
+            pb_val = cur_count = 0  # 与进度条有关
+            pk_li = cursor.fetchall()  # 查询表中所有数据
+            for value in pk_li:  # 遍历每一条数据
+                # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                # print(cur_count,value)
+                h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                    attr_index = self.hmac_mod(h, self.attrNum)
+                    bit_index = self.hmac_mod(h, self.lsb)
+                    matchCount = matchCount + self.detect(value[pk_index], value[v_array[attr_index]], bit_index)
+                    totalCount += 1
+                cur_count += 1
+                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                pb_NewVal = int(cur_count / rowcount * 100.0)
+                if pb_NewVal == pb_val + 1:
+                    self.pb_signal.emit(str(pb_NewVal))
+                    pb_val = pb_NewVal
+                # self.progressBar.setValue(cur_count / rowcount * 100.0)
+        except Exception as e:
+            self.err_signal.emit(str(e))
+            # QMessageBox.critical(self, 'Error', str(e))
+        time_end = time.time()
+        matchRatio = matchCount / totalCount
+        if matchRatio >= (float(self.threshold)) / 100.0:
+            self.dialogInfo_signal.emit(
+                '水印检测完毕！\n该数据表添加过水印！\n检测数：%d  匹配数：%d \n匹配率：%.2f%%\n总用时：%.4fs' % (
+                    totalCount, matchCount, matchRatio * 100, time_end - time_start))
+            # QMessageBox.information(self, '检测完成', '水印检测完毕！\n该数据表添加过水印！\n检测数：%d 匹配数： %d \n总用时：%.4fs' % (
+            #     totalCount, matchCount, time_end - time_start), QMessageBox.Ok,
+            #                         QMessageBox.Ok)
+        else:
+            self.dialogInfo_signal.emit(
+                "水印检测完毕！\n该数据表未添加过水印！\n检测数：%d  匹配数：%d \n匹配率：%.2f%%\n总用时：%.4fs" % (
+                    totalCount, matchCount, matchRatio * 100, time_end - time_start))
+            # QMessageBox.information(self, '检测完成', '水印检测完毕！\n该数据表未添加过水印！\n检测数：%d 匹配数： %d \n总用时：%.4fs' % (
+            #     totalCount, matchCount, time_end - time_start), QMessageBox.Ok,
+            #                         QMessageBox.Ok)
+
+    def detect(self, pk_value, attr_value, bit_index):
+        attr_binVal = self.float2bin(attr_value)
+        if self.first_hash_calc(pk_value):
+            bit_val = '1'
+        else:
+            bit_val = '0'
+        if attr_binVal[-(bit_index + 1)] == bit_val:
+            return 1
+        else:
+            return 0
+
+    def hmac_mod(self, hmac_str, mod_num):  # 对HMAC值进行取模运算
+        res = 0
+        for ch in hmac_str:
+            res = (res * 16 + int(ch, 16)) % int(str(mod_num), 10)
+        return res
+
+    def first_hash_calc(self, pk_value):  # 密钥和主键串接后的一层哈希计算
+        hash_value = hashlib.md5()
+        hash_value.update(key + str(pk_value).encode('utf-8'))
+        return self.hmac_mod(hash_value.hexdigest(), 2)
+
+    def float2bin(self, f):  # 浮点数转换为64位二进制数，返回二进制字符串
+        return bin(struct.unpack('!Q', struct.pack('!d', f))[0])[2:].zfill(64)
 
 
 # 数据库登录窗口类
