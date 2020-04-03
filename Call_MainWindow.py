@@ -69,9 +69,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         get_key_path, ok = QFileDialog.getOpenFileName(self, 'Select file', './', 'SecretKey Files(*.key)')
         if ok:
             self.key_lineEdit.setText(str(get_key_path))
-        key_file = open(str(get_key_path), 'rb')
-        key = key_file.readline()
-        key_file.close()
+            key_file = open(str(get_key_path), 'rb')
+            key = key_file.readline()
+            key_file.close()
 
     def watermarkInsert(self):  # 点击添加按钮后执行此函数
         # 水印添加时禁用所有组件
