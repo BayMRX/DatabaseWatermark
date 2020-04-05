@@ -6,20 +6,32 @@ import hmac
 import hashlib
 import struct
 import time
+import os
 from MainWindow import Ui_MainWindow
 from database_login import Ui_Login_Form
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
 # 全局变量声明
 db = key = cursor = cur_tb = None
+username = hostname = password = None
 
 
+# 程序主界面
 class MyMainForm(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MyMainForm, self).__init__(parent)
         self.login = LoginForm()  # 登陆界面类实例化
         self.setupUi(self)
+        # 添加输入框数字验证器（只允许输入数字）
+        IntValidator = QIntValidator(self)
+        DoubleValidator = QDoubleValidator(self)
+        # DoubleValidator.setRange(0, 100, 5)
+        self.scale_lineEdit.setValidator(IntValidator)
+        self.attrNum_lineEdit.setValidator(IntValidator)
+        self.lsb_lineEdit.setValidator(IntValidator)
+        self.threshold_lineEdit.setValidator(DoubleValidator)
         # 槽函数初始化，对应操作发生后自动执行相应的函数
         self.login_pushButton.clicked.connect(self.openForm)
         self.statusbar.showMessage(' MySQL未连接')  # 主界面底部状态栏
@@ -28,6 +40,8 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.key_pushButton.clicked.connect(self.openKeyFile)
         self.add_pushButton.clicked.connect(self.watermarkInsert)
         self.detect_pushButton.clicked.connect(self.watermarkDetect)
+        self.backup_pushButton.clicked.connect(self.backup)
+        self.recover_pushButton.clicked.connect(self.recover)
 
     def openForm(self):  # 点登陆按钮 打开登录框
         global cursor
@@ -72,6 +86,48 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             key_file = open(str(get_key_path), 'rb')
             key = key_file.readline()
             key_file.close()
+
+    # 对当前数据表进行备份，备份到软件当前目录
+    def backup(self):
+        global username, password, cur_tb
+        filename = "./" + cur_tb + ".sql"
+        try:
+            # 在正常的备份语句前需添加临时环境变量，否则会有warning黑框弹出
+            cmd = "MYSQL_PWD=" + password + "&& mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
+            if os.name == 'nt':
+                cmd = "set " + cmd
+            # print(cmd)
+            if not os.path.exists(filename):
+                os.system(cmd)
+                self.finishDialog("备份完成！")
+            else:
+                # 备份文件已存在弹窗选择是否进行覆盖
+                rec_code = QMessageBox.warning(self, '文件已存在！', '此数据表已有备份文件存在，是否覆盖？', QMessageBox.Yes | QMessageBox.No,
+                                               QMessageBox.Yes)
+                if rec_code != 65536:
+                    os.system(cmd)
+                    self.finishDialog("备份完成！")
+                    os.system("set MYSQL_PWD=")
+        except Exception as e:
+            self.err_info(str(e))
+
+    # 对当前数据表备份过的数据进行还原
+    def recover(self):
+        global username, password, cur_tb, cursor
+        filename = "./" + cur_tb + ".sql"
+        try:
+            # 在正常的恢复语句前需添加临时环境变量，否则会有warning黑框弹出
+            cmd = "MYSQL_PWD=" + password + "&& mysql -u" + username + " " + self.cur_db + " < " + filename
+            if os.name == 'nt':  # 判断系统类型，nt为windows
+                cmd = "set " + cmd
+            if not os.path.exists(filename):
+                self.err_info("备份文件不存在！")
+            else:
+                os.system(cmd)
+                self.finishDialog("恢复完成！")
+                os.system("set MYSQL_PWD=")
+        except Exception as e:
+            self.err_info(str(e))
 
     def watermarkInsert(self):  # 点击添加按钮后执行此函数
         # 水印添加时禁用所有组件
@@ -166,6 +222,7 @@ class InsertThread(QThread):
                     self.pb_signal.emit(str(pb_NewVal))
                     pb_val = pb_NewVal
                 # self.progressBar.setValue(cur_count / rowcount * 100)
+            db.commit()
             time_end = time.time()
             self.dialogInfo_signal.emit('水印添加成功！\n总用时：%.4fs' % (time_end - time_start))
             # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
@@ -212,7 +269,7 @@ class InsertThread(QThread):
     def update_db(self, sql):  # 执行SQL更新操作
         try:
             cursor.execute(sql)
-            db.commit()
+            # db.commit()
         except Exception as e:
             self.err_signal.emit('DateBase Error:' + str(e))
             db.rollback()
@@ -326,7 +383,7 @@ class LoginForm(QDialog, Ui_Login_Form):
         self.login_pushButton.clicked.connect(self.login)  # 槽函数，点击按钮后登陆
 
     def login(self):
-        global db
+        global db, username, hostname, password
         username = self.user_lineEdit.text()
         if not username:  # 不输入username则默认以root登陆
             self.user_lineEdit.setText('root')

@@ -272,7 +272,7 @@
               <widget class="QPushButton" name="add_pushButton">
                   <property name="geometry">
                       <rect>
-                          <x>260</x>
+                          <x>190</x>
                           <y>30</y>
                           <width>75</width>
                           <height>23</height>
@@ -288,7 +288,7 @@
                   <rect>
                       <x>10</x>
                       <y>270</y>
-                      <width>671</width>
+                      <width>321</width>
                       <height>71</height>
                   </rect>
               </property>
@@ -298,7 +298,7 @@
               <widget class="QLabel" name="label_4">
                   <property name="geometry">
                       <rect>
-                          <x>65</x>
+                          <x>25</x>
                           <y>30</y>
                           <width>31</width>
                           <height>16</height>
@@ -311,7 +311,7 @@
               <widget class="QLineEdit" name="threshold_lineEdit">
                   <property name="geometry">
                       <rect>
-                          <x>105</x>
+                          <x>65</x>
                           <y>28</y>
                           <width>51</width>
                           <height>20</height>
@@ -321,7 +321,7 @@
               <widget class="QLabel" name="label_5">
                   <property name="geometry">
                       <rect>
-                          <x>160</x>
+                          <x>120</x>
                           <y>30</y>
                           <width>16</width>
                           <height>16</height>
@@ -337,7 +337,7 @@
               <widget class="QPushButton" name="detect_pushButton">
                   <property name="geometry">
                       <rect>
-                          <x>260</x>
+                          <x>190</x>
                           <y>27</y>
                           <width>75</width>
                           <height>23</height>
@@ -345,6 +345,45 @@
                   </property>
                   <property name="text">
                       <string>检测</string>
+                  </property>
+              </widget>
+          </widget>
+          <widget class="QGroupBox" name="groupBox_5">
+              <property name="geometry">
+                  <rect>
+                      <x>350</x>
+                      <y>270</y>
+                      <width>331</width>
+                      <height>71</height>
+                  </rect>
+              </property>
+              <property name="title">
+                  <string>备份与恢复</string>
+              </property>
+              <widget class="QPushButton" name="backup_pushButton">
+                  <property name="geometry">
+                      <rect>
+                          <x>60</x>
+                          <y>30</y>
+                          <width>75</width>
+                          <height>23</height>
+                      </rect>
+                  </property>
+                  <property name="text">
+                      <string>备份</string>
+                  </property>
+              </widget>
+              <widget class="QPushButton" name="recover_pushButton">
+                  <property name="geometry">
+                      <rect>
+                          <x>200</x>
+                          <y>30</y>
+                          <width>75</width>
+                          <height>23</height>
+                      </rect>
+                  </property>
+                  <property name="text">
+                      <string>恢复</string>
                   </property>
               </widget>
           </widget>
