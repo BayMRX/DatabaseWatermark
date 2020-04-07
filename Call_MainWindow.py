@@ -113,7 +113,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
 
     # 对当前数据表备份过的数据进行还原
     def recover(self):
-        global username, password, cur_tb, cursor
+        global db, username, password, cur_tb, cursor
         filename = "./" + cur_tb + ".sql"
         try:
             # 在正常的恢复语句前需添加临时环境变量，否则会有warning黑框弹出
@@ -177,7 +177,7 @@ class InsertThread(QThread):
         self.lsb = lsb
 
     def run(self):
-        global cur_tb
+        global cur_tb, db
         time_start = time.time()
         sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
         cursor.execute(sql)
@@ -289,7 +289,7 @@ class DetectThread(QThread):
         self.threshold = threshold
 
     def run(self):
-        global cur_tb
+        global cur_tb, db
         time_start = time.time()
         sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
         cursor.execute(sql)
@@ -332,6 +332,7 @@ class DetectThread(QThread):
         except Exception as e:
             self.err_signal.emit(str(e))
             # QMessageBox.critical(self, 'Error', str(e))
+        db.commit()
         time_end = time.time()
         matchRatio = matchCount / totalCount
         if matchRatio >= (float(self.threshold)) / 100.0:
