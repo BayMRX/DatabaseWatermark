@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>MainWindow</class>
+    <widget class="QMainWindow" name="MainWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>443</width>
+                <height>289</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>水印攻击程序</string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <widget class="QProgressBar" name="progressBar">
+                <property name="geometry">
+                    <rect>
+                        <x>20</x>
+                        <y>230</y>
+                        <width>411</width>
+                        <height>23</height>
+                    </rect>
+                </property>
+                <property name="value">
+                    <number>0</number>
+                </property>
+            </widget>
+            <widget class="QWidget" name="widget" native="true">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>10</y>
+                        <width>421</width>
+                        <height>211</height>
+                    </rect>
+                </property>
+                <widget class="QGroupBox" name="groupBox">
+                    <property name="geometry">
+                        <rect>
+                            <x>10</x>
+                            <y>20</y>
+                            <width>141</width>
+                            <height>181</height>
+                        </rect>
+                    </property>
+                    <property name="title">
+                        <string>选择与连接</string>
+                    </property>
+                    <property name="flat">
+                        <bool>false</bool>
+                    </property>
+                    <property name="checkable">
+                        <bool>false</bool>
+                    </property>
+                    <property name="checked">
+                        <bool>false</bool>
+                    </property>
+                    <widget class="QComboBox" name="tb_comboBox">
+                        <property name="geometry">
+                            <rect>
+                                <x>10</x>
+                                <y>140</y>
+                                <width>111</width>
+                                <height>22</height>
+                            </rect>
+                        </property>
+                        <item>
+                            <property name="text">
+                                <string>请先选择数据库</string>
+                            </property>
+                        </item>
+                    </widget>
+                    <widget class="QPushButton" name="login_pushButton">
+                        <property name="geometry">
+                            <rect>
+                                <x>10</x>
+                                <y>20</y>
+                                <width>111</width>
+                                <height>23</height>
+                            </rect>
+                        </property>
+                        <property name="toolTip">
+                            <string>点击登陆MySQL</string>
+                        </property>
+                        <property name="text">
+                            <string>登录MySQL</string>
+                        </property>
+                    </widget>
+                    <widget class="QComboBox" name="db_comboBox">
+                        <property name="geometry">
+                            <rect>
+                                <x>10</x>
+                                <y>80</y>
+                                <width>111</width>
+                                <height>20</height>
+                            </rect>
+                        </property>
+                        <property name="insertPolicy">
+                            <enum>QComboBox::InsertAtBottom</enum>
+                        </property>
+                        <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+                        </property>
+                        <item>
+                            <property name="text">
+                                <string>请先连接MySQL</string>
+                            </property>
+                        </item>
+                    </widget>
+                    <widget class="QLabel" name="label">
+                        <property name="geometry">
+                            <rect>
+                                <x>15</x>
+                                <y>60</y>
+                                <width>51</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>数据库</string>
+                        </property>
+                    </widget>
+                    <widget class="QLabel" name="label_2">
+                        <property name="geometry">
+                            <rect>
+                                <x>15</x>
+                                <y>120</y>
+                                <width>51</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>数据表</string>
+                        </property>
+                    </widget>
+                </widget>
+                <widget class="QGroupBox" name="groupBox_3">
+                    <property name="geometry">
+                        <rect>
+                            <x>160</x>
+                            <y>20</y>
+                            <width>251</width>
+                            <height>181</height>
+                        </rect>
+                    </property>
+                    <property name="title">
+                        <string>水印攻击</string>
+                    </property>
+                    <widget class="QPushButton" name="attack_pushButton">
+                        <property name="geometry">
+                            <rect>
+                                <x>160</x>
+                                <y>136</y>
+                                <width>75</width>
+                                <height>23</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>开始攻击</string>
+                        </property>
+                    </widget>
+                    <widget class="QRadioButton" name="delAttack_radioButton">
+                        <property name="geometry">
+                            <rect>
+                                <x>20</x>
+                                <y>30</y>
+                                <width>89</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="toolTip">
+                            <string>随机删除元组</string>
+                        </property>
+                        <property name="text">
+                            <string>删除攻击</string>
+                        </property>
+                    </widget>
+                    <widget class="QRadioButton" name="updAttac_radioButton">
+                        <property name="geometry">
+                            <rect>
+                                <x>20</x>
+                                <y>64</y>
+                                <width>89</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="toolTip">
+                            <string>对元组全部属性的所有不重要比特位随机替换</string>
+                        </property>
+                        <property name="text">
+                            <string>更新攻击</string>
+                        </property>
+                    </widget>
+                    <widget class="QRadioButton" name="algoAttack_radioButton">
+                        <property name="geometry">
+                            <rect>
+                                <x>20</x>
+                                <y>100</y>
+                                <width>89</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="toolTip">
+                            <string>利用水印算法进行攻击(随机生成密钥)</string>
+                        </property>
+                        <property name="text">
+                            <string>算法攻击</string>
+                        </property>
+                    </widget>
+                    <widget class="QLabel" name="label_6">
+                        <property name="geometry">
+                            <rect>
+                                <x>20</x>
+                                <y>140</y>
+                                <width>61</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>攻击比例：</string>
+                        </property>
+                    </widget>
+                    <widget class="QLineEdit" name="scale_lineEdit">
+                        <property name="geometry">
+                            <rect>
+                                <x>98</x>
+                                <y>138</y>
+                                <width>41</width>
+                                <height>20</height>
+                            </rect>
+                        </property>
+                    </widget>
+                    <widget class="QLabel" name="label_3">
+                        <property name="geometry">
+                            <rect>
+                                <x>79</x>
+                                <y>140</y>
+                                <width>16</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;1/&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                    </widget>
+                    <widget class="QWidget" name="attrNum_widget" native="true">
+                        <property name="geometry">
+                            <rect>
+                                <x>120</x>
+                                <y>20</y>
+                                <width>71</width>
+                                <height>41</height>
+                            </rect>
+                        </property>
+                        <widget class="QLabel" name="label_7">
+                            <property name="geometry">
+                                <rect>
+                                    <x>0</x>
+                                    <y>0</y>
+                                    <width>61</width>
+                                    <height>16</height>
+                                </rect>
+                            </property>
+                            <property name="text">
+                                <string>属性个数：</string>
+                            </property>
+                        </widget>
+                        <widget class="QLineEdit" name="attrNum_lineEdit">
+                            <property name="geometry">
+                                <rect>
+                                    <x>0</x>
+                                    <y>20</y>
+                                    <width>61</width>
+                                    <height>20</height>
+                                </rect>
+                            </property>
+                        </widget>
+                    </widget>
+                    <widget class="QWidget" name="lsb_widget" native="true">
+                        <property name="geometry">
+                            <rect>
+                                <x>120</x>
+                                <y>80</y>
+                                <width>91</width>
+                                <height>41</height>
+                            </rect>
+                        </property>
+                        <widget class="QLabel" name="label_8">
+                            <property name="geometry">
+                                <rect>
+                                    <x>0</x>
+                                    <y>0</y>
+                                    <width>81</width>
+                                    <height>16</height>
+                                </rect>
+                            </property>
+                            <property name="text">
+                                <string>不重要比特数：</string>
+                            </property>
+                        </widget>
+                        <widget class="QLineEdit" name="lsb_lineEdit">
+                            <property name="geometry">
+                                <rect>
+                                    <x>0</x>
+                                    <y>20</y>
+                                    <width>61</width>
+                                    <height>20</height>
+                                </rect>
+                            </property>
+                        </widget>
+                    </widget>
+                </widget>
+            </widget>
+            <zorder>widget</zorder>
+            <zorder>progressBar</zorder>
+        </widget>
+        <widget class="QStatusBar" name="statusbar"/>
+    </widget>
+    <tabstops>
+        <tabstop>login_pushButton</tabstop>
+        <tabstop>db_comboBox</tabstop>
+        <tabstop>tb_comboBox</tabstop>
+        <tabstop>delAttack_radioButton</tabstop>
+        <tabstop>updAttac_radioButton</tabstop>
+        <tabstop>algoAttack_radioButton</tabstop>
+        <tabstop>attrNum_lineEdit</tabstop>
+        <tabstop>lsb_lineEdit</tabstop>
+        <tabstop>scale_lineEdit</tabstop>
+        <tabstop>attack_pushButton</tabstop>
+    </tabstops>
+    <resources/>
+    <connections/>
+</ui>

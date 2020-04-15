@@ -5,20 +5,20 @@ import pymysql
 import hmac
 import hashlib
 import struct
+import string
 import time
-import os
-from MainWindow import Ui_MainWindow
+from random import choice, randint
+from UI_Attack import Ui_MainWindow
 from database_login import Ui_Login_Form
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 # 全局变量声明
-db = key = cursor = cur_tb = None
+db = cursor = cur_tb = None
 username = hostname = password = None
 
 
-# 程序主界面
 class MyMainForm(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MyMainForm, self).__init__(parent)
@@ -26,22 +26,20 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         # 添加输入框数字验证器（只允许输入数字）
         IntValidator = QIntValidator(self)
-        DoubleValidator = QDoubleValidator(self)
         # DoubleValidator.setRange(0, 100, 5)
         self.scale_lineEdit.setValidator(IntValidator)
         self.attrNum_lineEdit.setValidator(IntValidator)
         self.lsb_lineEdit.setValidator(IntValidator)
-        self.threshold_lineEdit.setValidator(DoubleValidator)
         # 槽函数初始化，对应操作发生后自动执行相应的函数
         self.login_pushButton.clicked.connect(self.openForm)
         self.statusbar.showMessage(' MySQL未连接')  # 主界面底部状态栏
         self.db_comboBox.activated.connect(self.db_change)
         self.tb_comboBox.currentIndexChanged.connect(self.tb_change)
-        self.key_pushButton.clicked.connect(self.openKeyFile)
-        self.add_pushButton.clicked.connect(self.watermarkInsert)
-        self.detect_pushButton.clicked.connect(self.watermarkDetect)
-        self.backup_pushButton.clicked.connect(self.backup)
-        self.recover_pushButton.clicked.connect(self.recover)
+        self.attack_pushButton.clicked.connect(self.watermarkAttack)
+        # 单选框信号槽函数
+        self.delAttack_radioButton.toggled.connect(lambda: self.btnstate(self.delAttack_radioButton))
+        self.updAttac_radioButton.toggled.connect(lambda: self.btnstate(self.updAttac_radioButton))
+        self.algoAttack_radioButton.toggled.connect(lambda: self.btnstate(self.algoAttack_radioButton))
 
     def openForm(self):  # 点登陆按钮 打开登录框
         global cursor
@@ -78,103 +76,80 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         cur_tb = self.tb_comboBox.currentText()
         self.statusbar.showMessage(' MySQL已连接| 当前数据库: ' + self.cur_db + ', 当前数据表: ' + cur_tb)
 
-    def openKeyFile(self):  # 打开并读取密钥文件到变量key中
-        global key
-        get_key_path, ok = QFileDialog.getOpenFileName(self, 'Select file', './', 'SecretKey Files(*.key)')
-        if ok:
-            self.key_lineEdit.setText(str(get_key_path))
-            key_file = open(str(get_key_path), 'rb')
-            key = key_file.readline()
-            key_file.close()
+    # 根据单选框状态禁用相关组件
+    def btnstate(self, btn):
+        if btn.text() == '删除攻击':
+            if btn.isChecked():
+                self.attrNum_widget.setEnabled(False)
+                self.lsb_widget.setEnabled(False)
+        if btn.text() == '更新攻击':
+            if btn.isChecked():
+                self.lsb_widget.setEnabled(True)
+                self.attrNum_widget.setEnabled(False)
+        if btn.text() == '算法攻击':
+            if btn.isChecked():
+                self.attrNum_widget.setEnabled(True)
+                self.lsb_widget.setEnabled(True)
 
-    # 对当前数据表进行备份，备份到软件当前目录
-    def backup(self):
-        global username, password, cur_tb
-        filename = "./" + cur_tb + ".sql"
-        try:
-            # 在正常的备份语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + "&& mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
-            if os.name == 'nt':
-                cmd = "set " + cmd
-            # print(cmd)
-            if not os.path.exists(filename):
-                os.system(cmd)
-                self.finishDialog("备份完成！")
-            else:
-                # 备份文件已存在弹窗选择是否进行覆盖
-                rec_code = QMessageBox.warning(self, '文件已存在！', '此数据表已有备份文件存在，是否覆盖？', QMessageBox.Yes | QMessageBox.No,
-                                               QMessageBox.Yes)
-                if rec_code != 65536:
-                    os.system(cmd)
-                    self.finishDialog("备份完成！")
-                    os.system("set MYSQL_PWD=")
-        except Exception as e:
-            self.err_info(str(e))
-
-    # 对当前数据表备份过的数据进行还原
-    def recover(self):
-        global db, username, password, cur_tb, cursor
-        filename = "./" + cur_tb + ".sql"
-        try:
-            # 在正常的恢复语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + "&& mysql -u" + username + " " + self.cur_db + " < " + filename
-            if os.name == 'nt':  # 判断系统类型，nt为windows
-                cmd = "set " + cmd
-            if not os.path.exists(filename):
-                self.err_info("备份文件不存在！")
-            else:
-                os.system(cmd)
-                self.finishDialog("恢复完成！")
-                os.system("set MYSQL_PWD=")
-        except Exception as e:
-            self.err_info(str(e))
-
-    def watermarkInsert(self):  # 点击添加按钮后执行此函数
-        # 水印添加时禁用所有组件
+    def watermarkAttack(self):  # 点击开始按钮后执行此函数
+        global cur_tb, cursor, db
+        # 水印攻击时禁用所有组件
         self.widget.setEnabled(False)
-        # 使用多线程处理比较耗费时间的水印添加过程
-        self.insert = InsertThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(), self.lsb_lineEdit.text())
+        # 判断攻击类型，并实例化多线程类
         self.progressBar.setValue(0)
-        # self.time_start = time.time()
-        self.insert.pb_signal.connect(self.update_pb)
-        self.insert.err_signal.connect(self.err_info)
-        self.insert.dialogInfo_signal.connect(self.finishDialog)
-        self.insert.start()
-
-    def watermarkDetect(self):
-        # 水印检测时禁用所有组件
-        self.widget.setEnabled(False)
-        # 使用多线程处理比较耗费时间的水印添加过程
-        self.detect = DetectThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(), self.lsb_lineEdit.text(),
-                                   self.threshold_lineEdit.text())
-        self.progressBar.setValue(0)
-        self.detect.pb_signal.connect(self.update_pb)
-        self.detect.err_signal.connect(self.err_info)
-        self.detect.dialogInfo_signal.connect(self.finishDialog)
-        self.detect.start()
+        if self.delAttack_radioButton.isChecked():  # 删除攻击
+            delScale = 1.0 / float(self.scale_lineEdit.text())
+            sql = 'DELETE FROM ' + cur_tb + ' where RAND() < ' + str(delScale)
+            time_start = time.time()
+            try:
+                cursor.execute(sql)
+                db.commit()
+                time_end = time.time()
+                self.progressBar.setValue(100)
+                self.finishDialog('水印攻击成功！\n总用时：%.4fs' % (time_end - time_start))
+            except Exception as e:
+                self.err_info(str(e))
+        elif self.updAttac_radioButton.isChecked():  # 更新攻击
+            self.attack = updAttackThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(),
+                                          self.lsb_lineEdit.text())
+            # 使用多线程处理比较耗费时间的过程
+            # self.time_start = time.time()
+            self.attack.pb_signal.connect(self.update_pb)
+            self.attack.err_signal.connect(self.err_info)
+            self.attack.dialogInfo_signal.connect(self.finishDialog)
+            self.attack.start()
+        elif self.algoAttack_radioButton.isChecked():  # 算法攻击
+            self.insert = algoAttackThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(),
+                                           self.lsb_lineEdit.text())
+            self.insert.pb_signal.connect(self.update_pb)
+            self.insert.err_signal.connect(self.err_info)
+            self.insert.dialogInfo_signal.connect(self.finishDialog)
+            self.insert.start()
 
     def update_pb(self, val):
         self.progressBar.setValue(int(val))
 
     def err_info(self, info):
         QMessageBox.critical(self, 'Error!', info)
+        self.widget.setEnabled(True)
 
     def finishDialog(self, info):
         QMessageBox.information(self, '操作完成', info, QMessageBox.Ok, QMessageBox.Ok)
-        self.widget.setEnabled(True)  # 水印添加完成后恢复所有组件状态
+        self.widget.setEnabled(True)  # 水印攻击完成后恢复所有组件状态
 
 
-# 启用水印插入多线程类
-class InsertThread(QThread):
+# 算法攻击
+class algoAttackThread(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
     def __init__(self, scale, attrNum, lsb):
-        super(InsertThread, self).__init__()
+        super(algoAttackThread, self).__init__()
         self.scale = scale
         self.attrNum = attrNum
         self.lsb = lsb
+        self.key = self.create_randomKey()
 
     def run(self):
         global cur_tb, db
@@ -204,7 +179,7 @@ class InsertThread(QThread):
             for value in pk_li:  # 遍历每一条数据
                 # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
                 # print(cur_count,value)
-                h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                h = hmac.new(self.key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
                 if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
                     attr_index = self.hmac_mod(h, self.attrNum)
                     attr_name = res[v_array[attr_index]][0]
@@ -224,7 +199,7 @@ class InsertThread(QThread):
                 # self.progressBar.setValue(cur_count / rowcount * 100)
             db.commit()
             time_end = time.time()
-            self.dialogInfo_signal.emit('水印添加成功！\n总用时：%.4fs' % (time_end - time_start))
+            self.dialogInfo_signal.emit('水印算法攻击成功！\n总用时：%.4fs' % (time_end - time_start))
             # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
             #                          QMessageBox.Ok)
         except Exception as e:
@@ -239,7 +214,7 @@ class InsertThread(QThread):
 
     def first_hash_calc(self, pk_value):  # 密钥和主键串接后的一层哈希计算
         hash_value = hashlib.md5()
-        hash_value.update(key + str(pk_value).encode('utf-8'))
+        hash_value.update(self.key + str(pk_value).encode('utf-8'))
         return self.hmac_mod(hash_value.hexdigest(), 2)
 
     def float2bin(self, f):  # 浮点数转换为64位二进制数，返回二进制字符串
@@ -249,7 +224,6 @@ class InsertThread(QThread):
         return struct.unpack('>d', int(b, 2).to_bytes(8, byteorder="big"))[0]
 
     def mark(self, pk_value, attr_value, bit_index):  # 对选中元组的对应属性的值进行修改（水印添加）
-        global key
         # print(type(attr_value), attr_value, bit_index)
         # 基本思路：接收浮点数并转换为二进制字符串，将比特串按修改比特位的位置进行分割，
         # 修改对应比特位的数值后再连接，将连接后的比特串再转回浮点数并返回
@@ -274,19 +248,22 @@ class InsertThread(QThread):
             self.err_signal.emit('DateBase Error:' + str(e))
             db.rollback()
 
+    def create_randomKey(self):
+        key = "".join([choice(string.ascii_letters + string.digits) for i in range(64)])
+        return bytes(key, encoding='utf-8')
 
-# 启用水印检测多线程类
-class DetectThread(QThread):
+
+# 更新攻击
+class updAttackThread(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
-    def __init__(self, scale, attrNum, lsb, threshold):
-        super(DetectThread, self).__init__()
+    def __init__(self, scale, attrNum, lsb):
+        super(updAttackThread, self).__init__()
         self.scale = scale
         self.attrNum = attrNum
         self.lsb = lsb
-        self.threshold = threshold
 
     def run(self):
         global cur_tb, db
@@ -305,22 +282,29 @@ class DetectThread(QThread):
                     v_array.append(i)
                     maxAttrNum += 1
         # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        pk_name = res[pk_index][0]  # 主键属性名
         # self.progressBar.setValue(0)  # 进度条清空
         sql = 'SELECT * FROM ' + cur_tb
         try:
             cursor.execute(sql)
             rowcount = cursor.rowcount
-            totalCount = matchCount = 0  # 命中总数和命中中正确个数
-            pb_val = cur_count = 0  # 与进度条有关
+            pb_val = cur_count = 0  # 与进度条相关
             pk_li = cursor.fetchall()  # 查询表中所有数据
+            bit_index = int(self.lsb)
+            bit_pow = 2 ** bit_index
+            totalCount = 0
             for value in pk_li:  # 遍历每一条数据
-                # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
-                # print(cur_count,value)
-                h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
-                if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
-                    attr_index = self.hmac_mod(h, self.attrNum)
-                    bit_index = self.hmac_mod(h, self.lsb)
-                    matchCount = matchCount + self.detect(value[pk_index], value[v_array[attr_index]], bit_index)
+                # 生气了 干脆全破坏了算了
+                if hash(str(value[pk_index])) % int(self.scale) == 0:
+                    sql_up = ''
+                    for i_attr in range(maxAttrNum):
+                        new_data = self.mark(value[pk_index], value[v_array[i_attr]], bit_index, bit_pow)
+                        sql_up = sql_up + res[v_array[i_attr]][0] + '=' + str(new_data) + ','
+                    sql_up = sql_up[:-1]
+                    sql = 'UPDATE ' + cur_tb + ' SET ' + sql_up + ' WHERE ' + pk_name + '=' + str(value[pk_index])
+                    # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
+                    # print(sql)
+                    self.update_db(sql)
                     totalCount += 1
                 cur_count += 1
                 # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
@@ -328,52 +312,37 @@ class DetectThread(QThread):
                 if pb_NewVal == pb_val + 1:
                     self.pb_signal.emit(str(pb_NewVal))
                     pb_val = pb_NewVal
-                # self.progressBar.setValue(cur_count / rowcount * 100.0)
+                # self.progressBar.setValue(cur_count / rowcount * 100)
+            db.commit()
+            time_end = time.time()
+            self.dialogInfo_signal.emit('水印攻击成功！\n攻击数量：%d条\n总用时：%.4fs' % (totalCount, time_end - time_start))
+            # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
+            #                          QMessageBox.Ok)
         except Exception as e:
             self.err_signal.emit(str(e))
             # QMessageBox.critical(self, 'Error', str(e))
-        db.commit()
-        time_end = time.time()
-        matchRatio = matchCount / totalCount
-        if matchRatio >= (float(self.threshold)) / 100.0:
-            self.dialogInfo_signal.emit(
-                '水印检测完毕！\n该数据表添加过水印！\n检测数：%d  匹配数：%d \n匹配率：%.2f%%\n总用时：%.4fs' % (
-                    totalCount, matchCount, matchRatio * 100, time_end - time_start))
-            # QMessageBox.information(self, '检测完成', '水印检测完毕！\n该数据表添加过水印！\n检测数：%d 匹配数： %d \n总用时：%.4fs' % (
-            #     totalCount, matchCount, time_end - time_start), QMessageBox.Ok,
-            #                         QMessageBox.Ok)
-        else:
-            self.dialogInfo_signal.emit(
-                "水印检测完毕！\n该数据表未添加过水印！\n检测数：%d  匹配数：%d \n匹配率：%.2f%%\n总用时：%.4fs" % (
-                    totalCount, matchCount, matchRatio * 100, time_end - time_start))
-            # QMessageBox.information(self, '检测完成', '水印检测完毕！\n该数据表未添加过水印！\n检测数：%d 匹配数： %d \n总用时：%.4fs' % (
-            #     totalCount, matchCount, time_end - time_start), QMessageBox.Ok,
-            #                         QMessageBox.Ok)
-
-    def detect(self, pk_value, attr_value, bit_index):
-        attr_binVal = self.float2bin(attr_value)
-        if self.first_hash_calc(pk_value):
-            bit_val = '1'
-        else:
-            bit_val = '0'
-        if attr_binVal[-(bit_index + 1)] == bit_val:
-            return 1
-        else:
-            return 0
-
-    def hmac_mod(self, hmac_str, mod_num):  # 对HMAC值进行取模运算
-        res = 0
-        for ch in hmac_str:
-            res = (res * 16 + int(ch, 16)) % int(str(mod_num), 10)
-        return res
-
-    def first_hash_calc(self, pk_value):  # 密钥和主键串接后的一层哈希计算
-        hash_value = hashlib.md5()
-        hash_value.update(key + str(pk_value).encode('utf-8'))
-        return self.hmac_mod(hash_value.hexdigest(), 2)
 
     def float2bin(self, f):  # 浮点数转换为64位二进制数，返回二进制字符串
         return bin(struct.unpack('!Q', struct.pack('!d', f))[0])[2:].zfill(64)
+
+    def bin2float(self, b):  # 64位二进制字符串转换为浮点数，返回类型为float
+        return struct.unpack('>d', int(b, 2).to_bytes(8, byteorder="big"))[0]
+
+    def mark(self, pk_value, attr_value, bit_index, bit_pow):  # 对选中元组的对应属性的值进行修改（水印攻击）
+        # 基本思路：搞个bit_index位的随机二进制数换到数据最后
+        attr_binVal = self.float2bin(attr_value)
+        str1 = attr_binVal[0:-bit_index]
+        str2 = bin(randint(bit_pow, 2 * bit_pow - 1))[-bit_index:]
+        str0 = str1 + str2
+        return self.bin2float(str0)
+
+    def update_db(self, sql):  # 执行SQL更新操作
+        try:
+            cursor.execute(sql)
+            # db.commit()
+        except Exception as e:
+            self.err_signal.emit('DateBase Error:' + str(e))
+            db.rollback()
 
 
 # 数据库登录窗口类
