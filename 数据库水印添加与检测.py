@@ -77,6 +77,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         global cur_tb, pk_index, pk_name, v_dict
         cur_tb = self.tb_comboBox.currentText()
         self.statusbar.showMessage(' MySQL已连接| 当前数据库: ' + self.cur_db + ', 当前数据表: ' + cur_tb)
+        # 下面是读取数据表中的所有属性并添加到界面左边的列表栏中
         sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
         cursor.execute(sql)
         res = cursor.fetchall()  # 获取查询结果
@@ -153,7 +154,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         for i in range(attrNum):
             item = self.left_listWidget.item(i).text()
             v_array.append(item)
-        v_array.sort()
+        v_array.sort()  # 排序是为了防止在界面列表栏拖动元素的时候使元素位置变化造成结果不一样
         return attrNum, v_array
 
     # 右边属性列表中的元素添加到左边
