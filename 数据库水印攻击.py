@@ -28,14 +28,17 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         IntValidator = QIntValidator(self)
         # DoubleValidator.setRange(0, 100, 5)
         self.scale_lineEdit.setValidator(IntValidator)
-        self.attrNum_lineEdit.setValidator(IntValidator)
-        self.lsb_lineEdit.setValidator(IntValidator)
+        # self.attrNum_lineEdit.setValidator(IntValidator)
+        # self.lsb_lineEdit.setValidator(IntValidator)
         # 槽函数初始化，对应操作发生后自动执行相应的函数
         self.login_pushButton.clicked.connect(self.openForm)
         self.statusbar.showMessage(' MySQL未连接')  # 主界面底部状态栏
         self.db_comboBox.activated.connect(self.db_change)
-        self.tb_comboBox.currentIndexChanged.connect(self.tb_change)
+        self.tb_comboBox.activated.connect(self.tb_change)
+        # self.tb_comboBox.currentIndexChanged.connect(self.tb_change)
         self.attack_pushButton.clicked.connect(self.watermarkAttack)
+        self.addAttr_pushButton.clicked.connect(self.move2left)
+        self.delAddr_pushButton.clicked.connect(self.move2right)
         # 单选框信号槽函数
         self.delAttack_radioButton.toggled.connect(lambda: self.btnstate(self.delAttack_radioButton))
         self.updAttac_radioButton.toggled.connect(lambda: self.btnstate(self.updAttac_radioButton))
@@ -72,27 +75,93 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             self.tb_comboBox.addItems(item)
 
     def tb_change(self):  # 数据表下拉菜单选项修改时执行此函数
-        global cur_tb
+        global cur_tb, pk_index, pk_name, v_dict
         cur_tb = self.tb_comboBox.currentText()
         self.statusbar.showMessage(' MySQL已连接| 当前数据库: ' + self.cur_db + ', 当前数据表: ' + cur_tb)
+        # 下面是读取数据表中的所有属性并添加到界面左边的列表栏中
+        sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        cursor.execute(sql)
+        res = cursor.fetchall()  # 获取查询结果
+        db.commit()
+        v_dict = {}
+        li = ['float', 'double', 'decimal']
+        self.left_listWidget.clear()
+        self.right_listWidget.clear()
+        for i, j in enumerate(res):
+            if j[3] == 'PRI':
+                pk_index = i  # 记录属性为主键的索引
+            else:
+                if j[1] in li:
+                    self.left_listWidget.addItem(j[0])
+                    v_dict[j[0]] = i
+        pk_name = res[pk_index][0]  # 主键属性名
+        # print(v_dict)
+
+    # 从属性列表中读取属性个数和属性名并返回
+    def get_attr(self):
+        v_array = []
+        attrNum = self.left_listWidget.count()
+        for i in range(attrNum):
+            item = self.left_listWidget.item(i).text()
+            v_array.append(item)
+        v_array.sort()  # 排序是为了防止在界面列表栏拖动元素的时候使元素位置变化造成结果不一样
+        return attrNum, v_array
+
+    # 右边属性列表中的元素添加到左边
+    def move2left(self):
+        items = []
+        selected = self.right_listWidget.selectedItems()
+        for item in selected:
+            items.append(item.text())
+            self.right_listWidget.takeItem(self.right_listWidget.row(item))
+        self.left_listWidget.addItems(items)
+
+    # 左边属性列表中的元素添加到右边
+    def move2right(self):
+        items = []
+        selected = self.left_listWidget.selectedItems()
+        for item in selected:
+            items.append(item.text())
+            self.left_listWidget.takeItem(self.left_listWidget.row(item))
+        self.right_listWidget.addItems(items)
+
 
     # 根据单选框状态禁用相关组件
     def btnstate(self, btn):
         if btn.text() == '删除攻击':
             if btn.isChecked():
-                self.attrNum_widget.setEnabled(False)
-                self.lsb_widget.setEnabled(False)
+                self.lsb_lineEdit.setEnabled(False)
+                self.label_10.setEnabled(False)
+                self.label_11.setEnabled(False)
+                self.label_12.setEnabled(False)
+                self.left_listWidget.setEnabled(False)
+                self.right_listWidget.setEnabled(False)
+                self.addAttr_pushButton.setEnabled(False)
+                self.delAddr_pushButton.setEnabled(False)
         if btn.text() == '更新攻击':
             if btn.isChecked():
-                self.lsb_widget.setEnabled(True)
-                self.attrNum_widget.setEnabled(False)
+                self.lsb_lineEdit.setEnabled(True)
+                self.label_10.setEnabled(True)
+                self.label_11.setEnabled(False)
+                self.label_12.setEnabled(False)
+                self.left_listWidget.setEnabled(False)
+                self.right_listWidget.setEnabled(False)
+                self.addAttr_pushButton.setEnabled(False)
+                self.delAddr_pushButton.setEnabled(False)
         if btn.text() == '算法攻击':
             if btn.isChecked():
-                self.attrNum_widget.setEnabled(True)
-                self.lsb_widget.setEnabled(True)
+                self.lsb_lineEdit.setEnabled(True)
+                self.label_10.setEnabled(True)
+                self.label_11.setEnabled(True)
+                self.label_12.setEnabled(True)
+                self.left_listWidget.setEnabled(True)
+                self.right_listWidget.setEnabled(True)
+                self.addAttr_pushButton.setEnabled(True)
+                self.delAddr_pushButton.setEnabled(True)
 
     def watermarkAttack(self):  # 点击开始按钮后执行此函数
         global cur_tb, cursor, db
+        attrNum, v_array = self.get_attr()
         # 水印攻击时禁用所有组件
         self.widget.setEnabled(False)
         # 判断攻击类型，并实例化多线程类
@@ -110,7 +179,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             except Exception as e:
                 self.err_info(str(e))
         elif self.updAttac_radioButton.isChecked():  # 更新攻击
-            self.attack = updAttackThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(),
+            self.attack = updAttackThread(self.scale_lineEdit.text(),
                                           self.lsb_lineEdit.text())
             # 使用多线程处理比较耗费时间的过程
             # self.time_start = time.time()
@@ -119,7 +188,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             self.attack.dialogInfo_signal.connect(self.finishDialog)
             self.attack.start()
         elif self.algoAttack_radioButton.isChecked():  # 算法攻击
-            self.insert = algoAttackThread(self.scale_lineEdit.text(), self.attrNum_lineEdit.text(),
+            self.insert = algoAttackThread(self.scale_lineEdit.text(), attrNum, v_array,
                                            self.lsb_lineEdit.text())
             self.insert.pb_signal.connect(self.update_pb)
             self.insert.err_signal.connect(self.err_info)
@@ -144,32 +213,33 @@ class algoAttackThread(QThread):
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
-    def __init__(self, scale, attrNum, lsb):
+    def __init__(self, scale, attrNum, v_array, lsb):
         super(algoAttackThread, self).__init__()
         self.scale = scale
         self.attrNum = attrNum
+        self.v_array = v_array
         self.lsb = lsb
         self.key = self.create_randomKey()
 
     def run(self):
-        global cur_tb, db
+        global cur_tb, db, v_dict
         time_start = time.time()
-        sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
-        cursor.execute(sql)
-        res = cursor.fetchall()  # 获取查询结果
-        li = ['float', 'double', 'decimal']
-        v_array = []  # 可添加水印属性列表
-        maxAttrNum = 0  # 可用来添加水印的最大属性数量
-        for i, j in enumerate(res):
-            if j[3] == 'PRI':
-                pk_index = i  # 记录属性为主键的索引
-            else:
-                if j[1] in li:
-                    v_array.append(i)
-                    maxAttrNum += 1
-        # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
-        pk_name = res[pk_index][0]  # 主键属性名
-        # self.progressBar.setValue(0)  # 进度条清空
+        # sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        # cursor.execute(sql)
+        # res = cursor.fetchall()  # 获取查询结果
+        # li = ['float', 'double', 'decimal']
+        # v_array = []  # 可添加水印属性列表
+        # maxAttrNum = 0  # 可用来添加水印的最大属性数量
+        # for i, j in enumerate(res):
+        #     if j[3] == 'PRI':
+        #         pk_index = i  # 记录属性为主键的索引
+        #     else:
+        #         if j[1] in li:
+        #             v_array.append(i)
+        #             maxAttrNum += 1
+        # # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        # pk_name = res[pk_index][0]  # 主键属性名
+        # # self.progressBar.setValue(0)  # 进度条清空
         sql = 'SELECT * FROM ' + cur_tb
         try:
             cursor.execute(sql)
@@ -182,9 +252,9 @@ class algoAttackThread(QThread):
                 h = hmac.new(self.key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
                 if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
                     attr_index = self.hmac_mod(h, self.attrNum)
-                    attr_name = res[v_array[attr_index]][0]
+                    attr_name = self.v_array[attr_index]
                     bit_index = self.hmac_mod(h, self.lsb)
-                    new_data = self.mark(value[pk_index], value[v_array[attr_index]], bit_index)
+                    new_data = self.mark(value[pk_index], value[v_dict[self.v_array[attr_index]]], bit_index)
                     sql = 'UPDATE ' + cur_tb + ' SET ' + attr_name + '=' + str(
                         new_data) + ' WHERE ' + pk_name + '=' + str(value[pk_index])
                     # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
@@ -259,10 +329,9 @@ class updAttackThread(QThread):
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
-    def __init__(self, scale, attrNum, lsb):
+    def __init__(self, scale, lsb):
         super(updAttackThread, self).__init__()
         self.scale = scale
-        self.attrNum = attrNum
         self.lsb = lsb
 
     def run(self):

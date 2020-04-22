@@ -13,7 +13,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(730, 447)
+        MainWindow.resize(730, 444)
+        MainWindow.setMinimumSize(QtCore.QSize(730, 444))
+        MainWindow.setMaximumSize(QtCore.QSize(730, 444))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
