@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import struct
 import time
+import datetime
 import os
 from UI_InsertDetect import Ui_MainWindow
 from database_login import Ui_Login_Form
@@ -179,8 +180,13 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         attrNum, v_array = self.get_attr()
         # 水印添加时禁用所有组件
         self.widget.setEnabled(False)
+        if self.log_checkBox.isChecked():
+            iflog = 1
+        else:
+            iflog = 0
+
         # 使用多线程处理比较耗费时间的水印添加过程
-        self.insert = InsertThread(self.scale_lineEdit.text(), attrNum, v_array, self.lsb_lineEdit.text())
+        self.insert = InsertThread(self.scale_lineEdit.text(), iflog, attrNum, v_array, self.lsb_lineEdit.text())
         self.progressBar.setValue(0)
         # self.time_start = time.time()
         self.insert.pb_signal.connect(self.update_pb)
@@ -192,8 +198,12 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         attrNum, v_array = self.get_attr()
         # 水印检测时禁用所有组件
         self.widget.setEnabled(False)
+        if self.log_checkBox.isChecked():
+            iflog = 1
+        else:
+            iflog = 0
         # 使用多线程处理比较耗费时间的水印添加过程
-        self.detect = DetectThread(self.scale_lineEdit.text(), attrNum, v_array, self.lsb_lineEdit.text(),
+        self.detect = DetectThread(self.scale_lineEdit.text(), iflog, attrNum, v_array, self.lsb_lineEdit.text(),
                                    self.threshold_lineEdit.text())
         self.progressBar.setValue(0)
         self.detect.pb_signal.connect(self.update_pb)
@@ -219,9 +229,10 @@ class InsertThread(QThread):
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
-    def __init__(self, scale, attrNum, v_array, lsb):
+    def __init__(self, scale, iflog, attrNum, v_array, lsb):
         super(InsertThread, self).__init__()
         self.scale = scale
+        self.iflog = iflog
         self.attrNum = attrNum
         self.lsb = lsb
         self.v_array = v_array
@@ -250,28 +261,86 @@ class InsertThread(QThread):
             cursor.execute(sql)
             rowcount = cursor.rowcount
             pb_val = cur_count = 0  # 与进度条相关
-            pk_li = cursor.fetchall()  # 查询表中所有数据
-            for value in pk_li:  # 遍历每一条数据
-                # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
-                # print(cur_count,value)
-                h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
-                if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
-                    attr_index = self.hmac_mod(h, self.attrNum)
-                    attr_name = self.v_array[attr_index]
-                    bit_index = self.hmac_mod(h, self.lsb)
-                    new_data = self.mark(value[pk_index], value[v_dict[self.v_array[attr_index]]], bit_index)
-                    sql = 'UPDATE ' + cur_tb + ' SET ' + attr_name + '=' + str(
-                        new_data) + ' WHERE ' + pk_name + '=' + str(value[pk_index])
-                    # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
-                    # print(sql)
-                    self.update_db(sql)
-                cur_count += 1
-                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
-                pb_NewVal = int(cur_count / rowcount * 100.0)
-                if pb_NewVal == pb_val + 1:
-                    self.pb_signal.emit(str(pb_NewVal))
-                    pb_val = pb_NewVal
-                # self.progressBar.setValue(cur_count / rowcount * 100)
+            if self.iflog == 1:
+                file_path = r'.\add.log'
+                f = open(file_path, 'a+')
+                f.writelines('***************************************************************************')
+                f.write('\n')
+                nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                k = 'Data table name: ' + cur_tb + '\nadd time：' + nowtime
+                # print(k)
+                f.writelines(k)
+                f.write('\n')
+                pk_li = cursor.fetchall()  # 查询表中所有数据
+                for value in pk_li:  # 遍历每一条数据
+                    # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                    # print(cur_count,value)
+                    h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                    if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                        attr_index = self.hmac_mod(h, self.attrNum)
+                        attr_name = self.v_array[attr_index]
+                        bit_index = self.hmac_mod(h, self.lsb)
+                        new_data = self.mark(value[pk_index], value[v_dict[self.v_array[attr_index]]], bit_index)
+                        sql = 'UPDATE ' + cur_tb + ' SET ' + attr_name + '=' + str(
+                            new_data) + ' WHERE ' + pk_name + '=' + str(value[pk_index])
+                        # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
+                        # print(sql)
+                        t = 'Primary key: ' + str(value[pk_index]) + ' Attribute: ' + str(attr_name) + ' value: ' + str(
+                            value[v_dict[self.v_array[attr_index]]]) + '-->' + str(new_data)
+                        f.writelines(t)
+                        f.write('\n')
+                        # print(t)
+
+                        self.update_db(sql)
+                    cur_count += 1
+                    # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                    pb_NewVal = int(cur_count / rowcount * 100.0)
+                    if pb_NewVal == pb_val + 1:
+                        self.pb_signal.emit(str(pb_NewVal))
+                        pb_val = pb_NewVal
+                    # self.progressBar.setValue(cur_count / rowcount * 100)
+                f.writelines('***************************************************************************')
+                f.write('\n')
+                f.close()
+            elif self.iflog == 0:
+                # file_path = r'.\add_log.txt'
+                # f = open(file_path, 'a+')
+                # f.writelines('***************************************************************************')
+                # f.write('\n')
+                # nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                # k = '本次添加水印的时间为：' + nowtime
+                # print(k)
+                # f.writelines(k)
+                # f.write('\n')
+                pk_li = cursor.fetchall()  # 查询表中所有数据
+                for value in pk_li:  # 遍历每一条数据
+                    # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                    # print(cur_count,value)
+                    h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                    if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                        attr_index = self.hmac_mod(h, self.attrNum)
+                        attr_name = self.v_array[attr_index]
+                        bit_index = self.hmac_mod(h, self.lsb)
+                        new_data = self.mark(value[pk_index], value[v_dict[self.v_array[attr_index]]], bit_index)
+                        sql = 'UPDATE ' + cur_tb + ' SET ' + attr_name + '=' + str(
+                            new_data) + ' WHERE ' + pk_name + '=' + str(value[pk_index])
+                        # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
+                        # print(sql)
+                        # t = '主键为' + str(value[pk_index]) + '的' + str(attr_name) + '属性打了水印，新值为' + str(new_data)
+                        # f.writelines(t)
+                        # f.write('\n')
+                        # print(t)
+
+                        self.update_db(sql)
+                    cur_count += 1
+                    # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                    pb_NewVal = int(cur_count / rowcount * 100.0)
+                    if pb_NewVal == pb_val + 1:
+                        self.pb_signal.emit(str(pb_NewVal))
+                        pb_val = pb_NewVal
+                    # self.progressBar.setValue(cur_count / rowcount * 100)
+                # f.writelines('***************************************************************************')
+                # f.close()
             db.commit()
             time_end = time.time()
             self.dialogInfo_signal.emit('水印添加成功！\n总用时：%.4fs' % (time_end - time_start))
@@ -331,14 +400,14 @@ class DetectThread(QThread):
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
-    def __init__(self, scale, attrNum, v_array, lsb, threshold):
+    def __init__(self, scale, iflog, attrNum, v_array, lsb, threshold):
         super(DetectThread, self).__init__()
         self.scale = scale
         self.attrNum = attrNum
         self.v_array = v_array
         self.lsb = lsb
         self.threshold = threshold
-
+        self.iflog=iflog
     def run(self):
         global cur_tb, db, v_dict
         time_start = time.time()
@@ -365,23 +434,89 @@ class DetectThread(QThread):
             pb_val = cur_count = 0  # 与进度条有关
             pk_li = cursor.fetchall()  # 查询表中所有数据
             db.commit()
-            for value in pk_li:  # 遍历每一条数据
-                # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
-                # print(cur_count,value)
-                h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
-                if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
-                    attr_index = self.hmac_mod(h, self.attrNum)
-                    bit_index = self.hmac_mod(h, self.lsb)
-                    matchCount = matchCount + self.detect(value[pk_index], value[v_dict[self.v_array[attr_index]]],
-                                                          bit_index)
-                    totalCount += 1
-                cur_count += 1
-                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
-                pb_NewVal = int(cur_count / rowcount * 100.0)
-                if pb_NewVal == pb_val + 1:
-                    self.pb_signal.emit(str(pb_NewVal))
-                    pb_val = pb_NewVal
-                # self.progressBar.setValue(cur_count / rowcount * 100.0)
+
+            if self.iflog == 1:
+                file_path = r'.\detect.log'
+                f = open(file_path, 'a+')
+                f.writelines('***************************************************************************')
+                f.write('\n')
+                nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                k = 'Data table name: ' + cur_tb + '\ndetect time：' + nowtime
+                # print(k)
+                f.writelines(k)
+                f.write('\n')
+                for value in pk_li:  # 遍历每一条数据
+                    # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                    # print(cur_count,value)
+                    h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                    if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                        attr_index = self.hmac_mod(h, self.attrNum)
+                        bit_index = self.hmac_mod(h, self.lsb)
+                        attr_name = self.v_array[attr_index]
+                        ll = self.detect(value[pk_index], value[v_dict[self.v_array[attr_index]]],
+                                         bit_index)
+                        if ll == 1:
+
+                            s = 'Primary key: ' + str(value[pk_index]) + ' Attribute: ' + str(attr_name) + ' hit!'
+                            # print(s)
+                        elif ll == 0:
+                            s = 'Primary key: ' + str(value[pk_index]) + ' Attribute: ' + str(attr_name) + " don't hit!"
+                            # print(s)
+                        f.writelines(s)
+                        f.write('\n')
+                        matchCount = matchCount + ll
+                        totalCount += 1
+                    cur_count += 1
+                    # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                    pb_NewVal = int(cur_count / rowcount * 100.0)
+                    if pb_NewVal == pb_val + 1:
+                        self.pb_signal.emit(str(pb_NewVal))
+                        pb_val = pb_NewVal
+                    # self.progressBar.setValue(cur_count / rowcount * 100.0)
+                u = matchCount / totalCount
+                if u >= (float(self.threshold)) / 100.0:
+                    ss = 'Total watermark detection：' + str(totalCount) + ' Matches：' + str(
+                        matchCount) + ' Match rate: ' + str(u) + ' , The data table has been watermarked!'
+
+
+                else:
+                    ss = 'Total watermark detection：' + str(totalCount) + ' Matches：' + str(
+                        matchCount) + ' Match rate: ' + str(u) + ' , The data table hasn\'t been watermarked!'
+                # print(ss)
+                f.writelines(ss)
+                f.write('\n')
+                f.writelines('***************************************************************************')
+                f.write('\n')
+                f.close()
+            else:
+
+                for value in pk_li:  # 遍历每一条数据
+                    # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                    # print(cur_count,value)
+                    h = hmac.new(key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                    if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                        attr_index = self.hmac_mod(h, self.attrNum)
+                        bit_index = self.hmac_mod(h, self.lsb)
+                        attr_name = self.v_array[attr_index]
+                        ll = self.detect(value[pk_index], value[v_dict[self.v_array[attr_index]]],
+                                         bit_index)
+                        if ll == 1:
+                            s = '主键为' + str(value[pk_index]) + '的' + str(attr_name) + '属性进行了检测，命中！'
+                            # print(s)
+                        elif ll == 0:
+                            s = '主键为' + str(value[pk_index]) + '的' + str(attr_name) + '属性进行了检测，未命中！'
+                            # print(s)
+
+                        matchCount = matchCount + ll
+                        totalCount += 1
+                    cur_count += 1
+                    # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                    pb_NewVal = int(cur_count / rowcount * 100.0)
+                    if pb_NewVal == pb_val + 1:
+                        self.pb_signal.emit(str(pb_NewVal))
+                        pb_val = pb_NewVal
+                    # self.progressBar.setValue(cur_count / rowcount * 100.0)
+
         except Exception as e:
             self.err_signal.emit(str(e))
             # QMessageBox.critical(self, 'Error', str(e))

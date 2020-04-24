@@ -72,7 +72,7 @@
                     <widget class="QComboBox" name="tb_comboBox">
                         <property name="geometry">
                             <rect>
-                                <x>350</x>
+                                <x>370</x>
                                 <y>20</y>
                                 <width>111</width>
                                 <height>22</height>
@@ -103,7 +103,7 @@
                     <widget class="QComboBox" name="db_comboBox">
                         <property name="geometry">
                             <rect>
-                                <x>180</x>
+                                <x>190</x>
                                 <y>20</y>
                                 <width>111</width>
                                 <height>20</height>
@@ -124,7 +124,7 @@
                     <widget class="QLabel" name="label">
                         <property name="geometry">
                             <rect>
-                                <x>180</x>
+                                <x>190</x>
                                 <y>0</y>
                                 <width>51</width>
                                 <height>16</height>
@@ -137,7 +137,7 @@
                     <widget class="QLabel" name="label_2">
                         <property name="geometry">
                             <rect>
-                                <x>350</x>
+                                <x>370</x>
                                 <y>0</y>
                                 <width>51</width>
                                 <height>16</height>
@@ -164,7 +164,7 @@
                         <property name="geometry">
                             <rect>
                                 <x>23</x>
-                                <y>180</y>
+                                <y>186</y>
                                 <width>75</width>
                                 <height>23</height>
                             </rect>
@@ -188,12 +188,15 @@
                         <property name="text">
                             <string>删除攻击</string>
                         </property>
+                        <property name="checked">
+                            <bool>true</bool>
+                        </property>
                     </widget>
                     <widget class="QRadioButton" name="updAttac_radioButton">
                         <property name="geometry">
                             <rect>
                                 <x>23</x>
-                                <y>80</y>
+                                <y>70</y>
                                 <width>71</width>
                                 <height>16</height>
                             </rect>
@@ -209,7 +212,7 @@
                         <property name="geometry">
                             <rect>
                                 <x>23</x>
-                                <y>130</y>
+                                <y>110</y>
                                 <width>71</width>
                                 <height>16</height>
                             </rect>
@@ -239,6 +242,22 @@
                                 <width>91</width>
                                 <height>41</height>
                             </rect>
+                        </property>
+                    </widget>
+                    <widget class="QCheckBox" name="log_checkBox">
+                        <property name="geometry">
+                            <rect>
+                                <x>24</x>
+                                <y>150</y>
+                                <width>71</width>
+                                <height>16</height>
+                            </rect>
+                        </property>
+                        <property name="text">
+                            <string>日志记录</string>
+                        </property>
+                        <property name="checked">
+                            <bool>true</bool>
                         </property>
                     </widget>
                 </widget>
@@ -401,7 +420,7 @@
                         <property name="geometry">
                             <rect>
                                 <x>150</x>
-                                <y>100</y>
+                                <y>90</y>
                                 <width>51</width>
                                 <height>41</height>
                             </rect>

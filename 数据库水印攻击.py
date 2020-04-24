@@ -13,6 +13,7 @@ from database_login import Ui_Login_Form
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import datetime
 
 # 全局变量声明
 db = cursor = cur_tb = None
@@ -125,7 +126,6 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             self.left_listWidget.takeItem(self.left_listWidget.row(item))
         self.right_listWidget.addItems(items)
 
-
     # 根据单选框状态禁用相关组件
     def btnstate(self, btn):
         if btn.text() == '删除攻击':
@@ -166,34 +166,61 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.widget.setEnabled(False)
         # 判断攻击类型，并实例化多线程类
         self.progressBar.setValue(0)
-        if self.delAttack_radioButton.isChecked():  # 删除攻击
-            delScale = 1.0 / float(self.scale_lineEdit.text())
-            sql = 'DELETE FROM ' + cur_tb + ' where RAND() < ' + str(delScale)
-            time_start = time.time()
-            try:
-                cursor.execute(sql)
-                db.commit()
-                time_end = time.time()
-                self.progressBar.setValue(100)
-                self.finishDialog('水印攻击成功！\n总用时：%.4fs' % (time_end - time_start))
-            except Exception as e:
-                self.err_info(str(e))
-        elif self.updAttac_radioButton.isChecked():  # 更新攻击
-            self.attack = updAttackThread(self.scale_lineEdit.text(),
-                                          self.lsb_lineEdit.text())
-            # 使用多线程处理比较耗费时间的过程
-            # self.time_start = time.time()
-            self.attack.pb_signal.connect(self.update_pb)
-            self.attack.err_signal.connect(self.err_info)
-            self.attack.dialogInfo_signal.connect(self.finishDialog)
-            self.attack.start()
-        elif self.algoAttack_radioButton.isChecked():  # 算法攻击
-            self.insert = algoAttackThread(self.scale_lineEdit.text(), attrNum, v_array,
-                                           self.lsb_lineEdit.text())
-            self.insert.pb_signal.connect(self.update_pb)
-            self.insert.err_signal.connect(self.err_info)
-            self.insert.dialogInfo_signal.connect(self.finishDialog)
-            self.insert.start()
+        if self.log_checkBox.isChecked():
+            if self.delAttack_radioButton.isChecked():  # 删除攻击
+                self.delect = delect_AttackThread_log(self.scale_lineEdit.text())
+                # 使用多线程处理比较耗费时间的过程
+                # self.time_start = time.time()
+                self.delect.pb_signal.connect(self.update_pb)
+                self.delect.err_signal.connect(self.err_info)
+                self.delect.dialogInfo_signal.connect(self.finishDialog)
+                self.delect.start()
+
+            elif self.updAttac_radioButton.isChecked():  # 更新攻击
+                self.attack = updAttackThread_log(self.scale_lineEdit.text(),
+                                                  self.lsb_lineEdit.text())
+                # 使用多线程处理比较耗费时间的过程
+                # self.time_start = time.time()
+                self.attack.pb_signal.connect(self.update_pb)
+                self.attack.err_signal.connect(self.err_info)
+                self.attack.dialogInfo_signal.connect(self.finishDialog)
+                self.attack.start()
+            elif self.algoAttack_radioButton.isChecked():  # 算法攻击
+                self.insert = algoAttackThread_log(self.scale_lineEdit.text(), attrNum, v_array,
+                                                   self.lsb_lineEdit.text())
+                self.insert.pb_signal.connect(self.update_pb)
+                self.insert.err_signal.connect(self.err_info)
+                self.insert.dialogInfo_signal.connect(self.finishDialog)
+                self.insert.start()
+        else:
+            if self.delAttack_radioButton.isChecked():  # 删除攻击
+                delScale = 1.0 / float(self.scale_lineEdit.text())
+                sql = 'DELETE FROM ' + cur_tb + ' where RAND() < ' + str(delScale)
+                time_start = time.time()
+                try:
+                    cursor.execute(sql)
+                    db.commit()
+                    time_end = time.time()
+                    self.progressBar.setValue(100)
+                    self.finishDialog('水印攻击成功！\n总用时：%.4fs' % (time_end - time_start))
+                except Exception as e:
+                    self.err_info(str(e))
+            elif self.updAttac_radioButton.isChecked():  # 更新攻击
+                self.attack = updAttackThread(self.scale_lineEdit.text(),
+                                              self.lsb_lineEdit.text())
+                # 使用多线程处理比较耗费时间的过程
+                # self.time_start = time.time()
+                self.attack.pb_signal.connect(self.update_pb)
+                self.attack.err_signal.connect(self.err_info)
+                self.attack.dialogInfo_signal.connect(self.finishDialog)
+                self.attack.start()
+            elif self.algoAttack_radioButton.isChecked():  # 算法攻击
+                self.insert = algoAttackThread(self.scale_lineEdit.text(), attrNum, v_array,
+                                               self.lsb_lineEdit.text())
+                self.insert.pb_signal.connect(self.update_pb)
+                self.insert.err_signal.connect(self.err_info)
+                self.insert.dialogInfo_signal.connect(self.finishDialog)
+                self.insert.start()
 
     def update_pb(self, val):
         self.progressBar.setValue(int(val))
@@ -207,7 +234,324 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.widget.setEnabled(True)  # 水印攻击完成后恢复所有组件状态
 
 
+class delect_AttackThread_log(QThread):
+    pb_signal = pyqtSignal(str)
+    err_signal = pyqtSignal(str)
+    dialogInfo_signal = pyqtSignal(str)
+
+    def __init__(self, scale):
+        super(delect_AttackThread_log, self).__init__()
+        self.scale = scale
+
+    def run(self):
+        global cur_tb, db, v_dict
+        time_start = time.time()
+        # sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        # cursor.execute(sql)
+        # res = cursor.fetchall()  # 获取查询结果
+        # li = ['float', 'double', 'decimal']
+        # v_array = []  # 可添加水印属性列表
+        # maxAttrNum = 0  # 可用来添加水印的最大属性数量
+        # for i, j in enumerate(res):
+        #     if j[3] == 'PRI':
+        #         pk_index = i  # 记录属性为主键的索引
+        #     else:
+        #         if j[1] in li:
+        #             v_array.append(i)
+        #             maxAttrNum += 1
+        # # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        # pk_name = res[pk_index][0]  # 主键属性名
+        # # self.progressBar.setValue(0)  # 进度条清空
+        delScale = 1.0 / float(self.scale)
+        global pk_name
+        # print(type(pk_name))
+        sql = 'SELECT ' + pk_name + ' FROM ' + cur_tb + ' where RAND() < ' + str(delScale)
+        time_start = time.time()
+        try:
+            file_path = r'.\attack.log'
+            f = open(file_path, 'a+')
+            f.writelines('******************************************************')
+            f.write('\n')
+            nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            k = 'Data table name: ' + cur_tb + '\nAttack type: delete attack\nattack time: ' + nowtime
+            # print(k)
+            f.writelines(k)
+            f.write('\n')
+
+            cursor.execute(sql)
+            rowcount = cursor.rowcount
+            pb_val = cur_count = 0  # 与进度条相关
+
+            pk_li = cursor.fetchall()
+
+            for i in pk_li:
+                # print(type(i[0]))
+                sql1 = 'DELETE FROM ' + cur_tb + ' where ' + pk_name + ' = ' + str(i[0])
+                cursor.execute(sql1)
+                # print(sql1)
+                s = 'primary key: ' + str(i[0])
+                # print(s)
+                f.writelines(s)
+                f.write('\n')
+                cur_count += 1
+                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                pb_NewVal = int(cur_count / rowcount * 100.0)
+                if pb_NewVal == pb_val + 1:
+                    self.pb_signal.emit(str(pb_NewVal))
+                    pb_val = pb_NewVal
+            db.commit()
+            f.writelines('************************************************************')
+            f.write('\n')
+            f.close()
+            time_end = time.time()
+            self.dialogInfo_signal.emit('水印删除攻击成功！\n总用时：%.4fs' % (time_end - time_start))
+        except Exception as e:
+            self.err_signal.emit(str(e))
+
 # 算法攻击
+class algoAttackThread_log(QThread):
+    pb_signal = pyqtSignal(str)
+    err_signal = pyqtSignal(str)
+    dialogInfo_signal = pyqtSignal(str)
+
+    def __init__(self, scale, attrNum, v_array, lsb):
+        super(algoAttackThread_log, self).__init__()
+        self.scale = scale
+        self.attrNum = attrNum
+        self.v_array = v_array
+        self.lsb = lsb
+        self.key = self.create_randomKey()
+
+    def run(self):
+        global cur_tb, db, v_dict
+        time_start = time.time()
+        # sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        # cursor.execute(sql)
+        # res = cursor.fetchall()  # 获取查询结果
+        # li = ['float', 'double', 'decimal']
+        # v_array = []  # 可添加水印属性列表
+        # maxAttrNum = 0  # 可用来添加水印的最大属性数量
+        # for i, j in enumerate(res):
+        #     if j[3] == 'PRI':
+        #         pk_index = i  # 记录属性为主键的索引
+        #     else:
+        #         if j[1] in li:
+        #             v_array.append(i)
+        #             maxAttrNum += 1
+        # # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        # pk_name = res[pk_index][0]  # 主键属性名
+        # # self.progressBar.setValue(0)  # 进度条清空
+        sql = 'SELECT * FROM ' + cur_tb
+        try:
+            file_path = r'.\attack.log'
+            f = open(file_path, 'a+')
+            f.writelines('******************************************************')
+            f.write('\n')
+            nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            k = 'Data table name: ' + cur_tb + '\nAttack type: algorithm attack\nattack time: ' + nowtime
+            # print(k)
+            f.writelines(k)
+            f.write('\n')
+            cursor.execute(sql)
+            rowcount = cursor.rowcount
+            pb_val = cur_count = 0  # 与进度条相关
+            pk_li = cursor.fetchall()  # 查询表中所有数据
+            for value in pk_li:  # 遍历每一条数据
+                # 密钥和主键值进行串接后做二次哈希运算（HMAC运算，直接套用库函数），返回字符串类型
+                # print(cur_count,value)
+                h = hmac.new(self.key, str(value[pk_index]).encode('utf-8'), digestmod='MD5').hexdigest()
+                if not self.hmac_mod(h, self.scale):  # 判断哈希值对水印比例系数取模后是否为0
+                    attr_index = self.hmac_mod(h, self.attrNum)
+                    attr_name = self.v_array[attr_index]
+                    bit_index = self.hmac_mod(h, self.lsb)
+                    new_data = self.mark(value[pk_index], value[v_dict[self.v_array[attr_index]]], bit_index)
+                    sql = 'UPDATE ' + cur_tb + ' SET ' + attr_name + '=' + str(
+                        new_data) + ' WHERE ' + pk_name + '=' + str(value[pk_index])
+                    # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
+                    # print(sql)
+                    ss = 'Primary key: ' + str(value[pk_index]) + ' Attribute: ' + str(attr_name) + ' value: ' + str(
+                        value[v_dict[self.v_array[attr_index]]]) + '-->' + str(new_data)
+                    # print(ss)
+                    f.writelines(ss)
+                    f.write('\n')
+                    self.update_db(sql)
+                cur_count += 1
+                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                pb_NewVal = int(cur_count / rowcount * 100.0)
+                if pb_NewVal == pb_val + 1:
+                    self.pb_signal.emit(str(pb_NewVal))
+                    pb_val = pb_NewVal
+                # self.progressBar.setValue(cur_count / rowcount * 100)
+            f.writelines('*******************************************************')
+            f.write('\n')
+            f.close()
+            db.commit()
+            time_end = time.time()
+            self.dialogInfo_signal.emit('水印算法攻击成功！\n总用时：%.4fs' % (time_end - time_start))
+            # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
+            #                          QMessageBox.Ok)
+        except Exception as e:
+            self.err_signal.emit(str(e))
+            # QMessageBox.critical(self, 'Error', str(e))
+
+    def hmac_mod(self, hmac_str, mod_num):  # 对HMAC值进行取模运算
+        res = 0
+        for ch in hmac_str:
+            res = (res * 16 + int(ch, 16)) % int(str(mod_num), 10)
+        return res
+
+    def first_hash_calc(self, pk_value):  # 密钥和主键串接后的一层哈希计算
+        hash_value = hashlib.md5()
+        hash_value.update(self.key + str(pk_value).encode('utf-8'))
+        return self.hmac_mod(hash_value.hexdigest(), 2)
+
+    def float2bin(self, f):  # 浮点数转换为64位二进制数，返回二进制字符串
+        return bin(struct.unpack('!Q', struct.pack('!d', f))[0])[2:].zfill(64)
+
+    def bin2float(self, b):  # 64位二进制字符串转换为浮点数，返回类型为float
+        return struct.unpack('>d', int(b, 2).to_bytes(8, byteorder="big"))[0]
+
+    def mark(self, pk_value, attr_value, bit_index):  # 对选中元组的对应属性的值进行修改（水印添加）
+        # print(type(attr_value), attr_value, bit_index)
+        # 基本思路：接收浮点数并转换为二进制字符串，将比特串按修改比特位的位置进行分割，
+        # 修改对应比特位的数值后再连接，将连接后的比特串再转回浮点数并返回
+        attr_binVal = self.float2bin(attr_value)
+        str1 = attr_binVal[0:-(bit_index + 1)]
+        if self.first_hash_calc(pk_value):
+            bit_val = '1'
+        else:
+            bit_val = '0'
+        if bit_index == 0:
+            str0 = str1 + bit_val
+        else:
+            str2 = attr_binVal[-bit_index:]
+            str0 = str1 + bit_val + str2
+        return self.bin2float(str0)
+
+    def update_db(self, sql):  # 执行SQL更新操作
+        try:
+            cursor.execute(sql)
+            # db.commit()
+        except Exception as e:
+            self.err_signal.emit('DateBase Error:' + str(e))
+            db.rollback()
+
+    def create_randomKey(self):
+        key = "".join([choice(string.ascii_letters + string.digits) for i in range(64)])
+        return bytes(key, encoding='utf-8')
+
+
+# 更新攻击
+class updAttackThread_log(QThread):
+    pb_signal = pyqtSignal(str)
+    err_signal = pyqtSignal(str)
+    dialogInfo_signal = pyqtSignal(str)
+
+    def __init__(self, scale, lsb):
+        super(updAttackThread_log, self).__init__()
+        self.scale = scale
+        self.lsb = lsb
+
+    def run(self):
+        global cur_tb, db
+        time_start = time.time()
+        sql = 'desc ' + cur_tb  # 查询当前表下的所有属性
+        cursor.execute(sql)
+        res = cursor.fetchall()  # 获取查询结果
+        li = ['float', 'double', 'decimal']
+        v_array = []  # 可添加水印属性列表
+        maxAttrNum = 0  # 可用来添加水印的最大属性数量
+        for i, j in enumerate(res):
+            if j[3] == 'PRI':
+                pk_index = i  # 记录属性为主键的索引
+            else:
+                if j[1] in li:
+                    v_array.append(i)
+                    maxAttrNum += 1
+        # print('primary_key is:[' + res[pk_index][0] + '], and available attribution is:',[res[x][0] for x in v_array])
+        pk_name = res[pk_index][0]  # 主键属性名
+        # self.progressBar.setValue(0)  # 进度条清空
+        sql = 'SELECT * FROM ' + cur_tb
+        try:
+            file_path = r'.\attack.log'
+            f = open(file_path, 'a+')
+            f.writelines('******************************************************')
+            f.write('\n')
+            nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            k = 'Data table name: ' + cur_tb + '\nAttack type: update attack\nattack time: ' + nowtime
+            # print(k)
+            f.writelines(k)
+            f.write('\n')
+            cursor.execute(sql)
+            rowcount = cursor.rowcount
+            pb_val = cur_count = 0  # 与进度条相关
+            pk_li = cursor.fetchall()  # 查询表中所有数据
+            bit_index = int(self.lsb)
+            bit_pow = 2 ** bit_index
+            totalCount = 0
+            for value in pk_li:  # 遍历每一条数据
+                # 生气了 干脆全破坏了算了
+                if hash(str(value[pk_index])) % int(self.scale) == 0:
+                    sql_up = ''
+                    hh = ''
+                    for i_attr in range(maxAttrNum):
+                        new_data = self.mark(value[pk_index], value[v_array[i_attr]], bit_index, bit_pow)
+                        sql_up = sql_up + res[v_array[i_attr]][0] + '=' + str(new_data) + ','
+                        hh = hh + 'attribute: ' + str(res[v_array[i_attr]][0]) + ' value: ' + str(
+                            value[v_array[i_attr]]) + '-->' + str(new_data) + ' '
+                    sql_up = sql_up[:-1]
+                    # print(hh)
+                    sql = 'UPDATE ' + cur_tb + ' SET ' + sql_up + ' WHERE ' + pk_name + '=' + str(value[pk_index])
+                    # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
+                    # print(sql)
+                    ss = 'primary key: ' + str(value[pk_index]) + ' ' + hh
+                    # print(ss)
+                    f.writelines(ss)
+                    f.write('\n')
+                    self.update_db(sql)
+                    totalCount += 1
+                cur_count += 1
+                # 只有在进度整数值变化时才发射信号，避免信号发射频繁造成主界面开销过大而无响应
+                pb_NewVal = int(cur_count / rowcount * 100.0)
+                if pb_NewVal == pb_val + 1:
+                    self.pb_signal.emit(str(pb_NewVal))
+                    pb_val = pb_NewVal
+                # self.progressBar.setValue(cur_count / rowcount * 100)
+            f.writelines('**************************************************************')
+            f.write('\n')
+            f.close()
+            db.commit()
+            time_end = time.time()
+            self.dialogInfo_signal.emit('水印攻击成功！\n攻击数量：%d条\n总用时：%.4fs' % (totalCount, time_end - time_start))
+            # QMessageBox.information(self, '添加成功', '水印添加成功！\n总用时：%.4fs' % (time_end - time_start), QMessageBox.Ok,
+            #                          QMessageBox.Ok)
+        except Exception as e:
+            self.err_signal.emit(str(e))
+            # QMessageBox.critical(self, 'Error', str(e))
+
+    def float2bin(self, f):  # 浮点数转换为64位二进制数，返回二进制字符串
+        return bin(struct.unpack('!Q', struct.pack('!d', f))[0])[2:].zfill(64)
+
+    def bin2float(self, b):  # 64位二进制字符串转换为浮点数，返回类型为float
+        return struct.unpack('>d', int(b, 2).to_bytes(8, byteorder="big"))[0]
+
+    def mark(self, pk_value, attr_value, bit_index, bit_pow):  # 对选中元组的对应属性的值进行修改（水印攻击）
+        # 基本思路：搞个bit_index位的随机二进制数换到数据最后
+        attr_binVal = self.float2bin(attr_value)
+        str1 = attr_binVal[0:-bit_index]
+        str2 = bin(randint(bit_pow, 2 * bit_pow - 1))[-bit_index:]
+        str0 = str1 + str2
+        return self.bin2float(str0)
+
+    def update_db(self, sql):  # 执行SQL更新操作
+        try:
+            cursor.execute(sql)
+            # db.commit()
+        except Exception as e:
+            self.err_signal.emit('DateBase Error:' + str(e))
+            db.rollback()
+
+
 class algoAttackThread(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
@@ -323,7 +667,6 @@ class algoAttackThread(QThread):
         return bytes(key, encoding='utf-8')
 
 
-# 更新攻击
 class updAttackThread(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
@@ -366,9 +709,13 @@ class updAttackThread(QThread):
                 # 生气了 干脆全破坏了算了
                 if hash(str(value[pk_index])) % int(self.scale) == 0:
                     sql_up = ''
+                    # hh = ''
                     for i_attr in range(maxAttrNum):
                         new_data = self.mark(value[pk_index], value[v_array[i_attr]], bit_index, bit_pow)
+                        # hh = hh + 'attribute: '+ str(res[v_array[i_attr]][0]) + ' ' + str(value[v_array[i_attr]])+'-->'+str(new_data)+' '
                         sql_up = sql_up + res[v_array[i_attr]][0] + '=' + str(new_data) + ','
+
+                    # print(hh)
                     sql_up = sql_up[:-1]
                     sql = 'UPDATE ' + cur_tb + ' SET ' + sql_up + ' WHERE ' + pk_name + '=' + str(value[pk_index])
                     # 为了防止对数据库误修改 初步测试时建议只输出不UPDATE
