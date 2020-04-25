@@ -168,7 +168,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.progressBar.setValue(0)
         if self.log_checkBox.isChecked():
             if self.delAttack_radioButton.isChecked():  # 删除攻击
-                self.delect = delect_AttackThread_log(self.scale_lineEdit.text())
+                self.delect = delete_AttackThread_log(self.scale_lineEdit.text())
                 # 使用多线程处理比较耗费时间的过程
                 # self.time_start = time.time()
                 self.delect.pb_signal.connect(self.update_pb)
@@ -234,13 +234,13 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.widget.setEnabled(True)  # 水印攻击完成后恢复所有组件状态
 
 
-class delect_AttackThread_log(QThread):
+class delete_AttackThread_log(QThread):
     pb_signal = pyqtSignal(str)
     err_signal = pyqtSignal(str)
     dialogInfo_signal = pyqtSignal(str)
 
     def __init__(self, scale):
-        super(delect_AttackThread_log, self).__init__()
+        super(delete_AttackThread_log, self).__init__()
         self.scale = scale
 
     def run(self):
@@ -268,7 +268,7 @@ class delect_AttackThread_log(QThread):
         sql = 'SELECT ' + pk_name + ' FROM ' + cur_tb + ' where RAND() < ' + str(delScale)
         time_start = time.time()
         try:
-            file_path = r'.\attack.log'
+            file_path = r'./attack.log'
             f = open(file_path, 'a+')
             f.writelines('******************************************************')
             f.write('\n')
@@ -308,6 +308,7 @@ class delect_AttackThread_log(QThread):
         except Exception as e:
             self.err_signal.emit(str(e))
 
+
 # 算法攻击
 class algoAttackThread_log(QThread):
     pb_signal = pyqtSignal(str)
@@ -343,7 +344,7 @@ class algoAttackThread_log(QThread):
         # # self.progressBar.setValue(0)  # 进度条清空
         sql = 'SELECT * FROM ' + cur_tb
         try:
-            file_path = r'.\attack.log'
+            file_path = r'./attack.log'
             f = open(file_path, 'a+')
             f.writelines('******************************************************')
             f.write('\n')
@@ -473,7 +474,7 @@ class updAttackThread_log(QThread):
         # self.progressBar.setValue(0)  # 进度条清空
         sql = 'SELECT * FROM ' + cur_tb
         try:
-            file_path = r'.\attack.log'
+            file_path = r'./attack.log'
             f = open(file_path, 'a+')
             f.writelines('******************************************************')
             f.write('\n')

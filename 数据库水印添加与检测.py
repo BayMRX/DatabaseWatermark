@@ -112,10 +112,12 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         filename = "./" + cur_tb + ".sql"
         try:
             # 在正常的备份语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + "&& mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
+            cmd = "MYSQL_PWD=" + password + " && mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
             if os.name == 'nt':
                 cmd = "set " + cmd
-            # print(cmd)
+            else:
+                cmd = "export " + cmd
+            print(cmd)
             if not os.path.exists(filename):
                 os.system(cmd)
                 self.finishDialog("备份完成！")
@@ -126,7 +128,10 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                 if rec_code != 65536:
                     os.system(cmd)
                     self.finishDialog("备份完成！")
-                    os.system("set MYSQL_PWD=")
+                    if os.name == 'nt':
+                        os.system("set MYSQL_PWD=")
+                    else:
+                        os.system("export MYSQL_PWD=")
         except Exception as e:
             self.err_info(str(e))
 
@@ -136,15 +141,21 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         filename = "./" + cur_tb + ".sql"
         try:
             # 在正常的恢复语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + "&& mysql -u" + username + " " + self.cur_db + " < " + filename
+            cmd = "MYSQL_PWD=" + password + " && mysql -u" + username + " " + self.cur_db + " < " + filename
             if os.name == 'nt':  # 判断系统类型，nt为windows
                 cmd = "set " + cmd
+            else:
+                cmd = "export " + cmd
             if not os.path.exists(filename):
                 self.err_info("备份文件不存在！")
             else:
+                print(cmd)
                 os.system(cmd)
                 self.finishDialog("恢复完成！")
-                os.system("set MYSQL_PWD=")
+                if os.name == 'nt':
+                    os.system("set MYSQL_PWD=")
+                else:
+                    os.system("export MYSQL_PWD=")
         except Exception as e:
             self.err_info(str(e))
 
@@ -262,7 +273,7 @@ class InsertThread(QThread):
             rowcount = cursor.rowcount
             pb_val = cur_count = 0  # 与进度条相关
             if self.iflog == 1:
-                file_path = r'.\add.log'
+                file_path = r'./add.log'
                 f = open(file_path, 'a+')
                 f.writelines('***************************************************************************')
                 f.write('\n')
@@ -303,7 +314,7 @@ class InsertThread(QThread):
                 f.write('\n')
                 f.close()
             elif self.iflog == 0:
-                # file_path = r'.\add_log.txt'
+                # file_path = r'./add_log.txt'
                 # f = open(file_path, 'a+')
                 # f.writelines('***************************************************************************')
                 # f.write('\n')
@@ -436,7 +447,7 @@ class DetectThread(QThread):
             db.commit()
 
             if self.iflog == 1:
-                file_path = r'.\detect.log'
+                file_path = r'./detect.log'
                 f = open(file_path, 'a+')
                 f.writelines('***************************************************************************')
                 f.write('\n')
