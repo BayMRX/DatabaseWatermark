@@ -112,12 +112,12 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         filename = "./" + cur_tb + ".sql"
         try:
             # 在正常的备份语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + " && mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
+            cmd = "&& mysqldump -u" + username + " " + self.cur_db + " " + cur_tb + " > " + filename
             if os.name == 'nt':
-                cmd = "set " + cmd
+                cmd = "set MYSQL_PWD=" + password + cmd
             else:
-                cmd = "export " + cmd
-            print(cmd)
+                cmd = "export MYSQL_PWD=" + password + " " + cmd
+            # print(cmd)
             if not os.path.exists(filename):
                 os.system(cmd)
                 self.finishDialog("备份完成！")
@@ -141,15 +141,15 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         filename = "./" + cur_tb + ".sql"
         try:
             # 在正常的恢复语句前需添加临时环境变量，否则会有warning黑框弹出
-            cmd = "MYSQL_PWD=" + password + " && mysql -u" + username + " " + self.cur_db + " < " + filename
+            cmd = "&& mysql -u" + username + " " + self.cur_db + " < " + filename
             if os.name == 'nt':  # 判断系统类型，nt为windows
-                cmd = "set " + cmd
+                cmd = "set MYSQL_PWD=" + password + cmd
             else:
-                cmd = "export " + cmd
+                cmd = "export MYSQL_PWD=" + password + " " + cmd
             if not os.path.exists(filename):
                 self.err_info("备份文件不存在！")
             else:
-                print(cmd)
+                # print(cmd)
                 os.system(cmd)
                 self.finishDialog("恢复完成！")
                 if os.name == 'nt':
