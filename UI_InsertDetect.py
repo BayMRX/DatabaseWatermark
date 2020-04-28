@@ -188,9 +188,9 @@ class Ui_MainWindow(object):
         self.label_6.setText(_translate("MainWindow", "水印比例系数：1/"))
         self.label_8.setText(_translate("MainWindow", "不重要比特数："))
         self.addAttr_pushButton.setText(_translate("MainWindow", "添加\n"
-                                                                 ">>>"))
-        self.delAddr_pushButton.setText(_translate("MainWindow", "移除\n"
                                                                  "<<<"))
+        self.delAddr_pushButton.setText(_translate("MainWindow", "移除\n"
+                                                                 ">>>"))
         self.label_10.setText(_translate("MainWindow", "添加水印的属性"))
         self.label_9.setText(_translate("MainWindow", "不添加水印的属性"))
         self.groupBox_3.setTitle(_translate("MainWindow", "水印添加"))

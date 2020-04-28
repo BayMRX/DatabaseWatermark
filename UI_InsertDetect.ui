@@ -312,7 +312,7 @@
                         </property>
                         <property name="text">
                             <string>添加
-                                &gt;&gt;&gt;
+                                &lt;&lt;&lt;
                             </string>
                         </property>
                     </widget>
@@ -327,7 +327,7 @@
                         </property>
                         <property name="text">
                             <string>移除
-                                &lt;&lt;&lt;
+                                &gt;&gt;&gt;
                             </string>
                         </property>
                     </widget>
