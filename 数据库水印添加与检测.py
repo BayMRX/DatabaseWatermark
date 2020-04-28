@@ -117,7 +117,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                 cmd = "set " + cmd
             else:
                 cmd = "export " + cmd
-            print(cmd)
+            # print(cmd)
             if not os.path.exists(filename):
                 os.system(cmd)
                 self.finishDialog("备份完成！")
@@ -149,7 +149,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             if not os.path.exists(filename):
                 self.err_info("备份文件不存在！")
             else:
-                print(cmd)
+                # print(cmd)
                 os.system(cmd)
                 self.finishDialog("恢复完成！")
                 if os.name == 'nt':
